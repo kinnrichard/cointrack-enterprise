@@ -212,7 +212,7 @@ export default function EmployeesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
-  const [formTab, setFormTab] = useState<'personal' | 'employment' | 'compensation' | 'government'>('personal');
+  const [formTab, setFormTab] = useState<'personal' | 'contact' | 'employment' | 'compensation'>('personal');
 
   const activeFilterCount = [deptFilter, siteFilter, typeFilter !== 'all' ? typeFilter : ''].filter(Boolean).length;
 
@@ -246,6 +246,7 @@ export default function EmployeesPage() {
     }),
   });
 
+  const companiesLookup = useQuery({ queryKey: ['companies-lookup'], queryFn: () => fetchLookup('companies') });
   const departments = useQuery({ queryKey: ['departments-lookup'], queryFn: () => fetchLookup('departments') });
   const positions = useQuery({ queryKey: ['positions-lookup'], queryFn: () => fetchLookup('positions') });
   const sites = useQuery({ queryKey: ['sites-lookup'], queryFn: () => fetchLookup('sites') });
@@ -588,7 +589,7 @@ export default function EmployeesPage() {
 
       {/* ─── Create / Edit Modal ───────────────────────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
           {/* Header */}
           <div className="px-6 pt-5 pb-4 bg-muted/50 border-b rounded-t-2xl">
             <DialogTitle className="text-xl font-semibold">
@@ -602,22 +603,15 @@ export default function EmployeesPage() {
           {/* Tab Navigation */}
           <div className="px-6 pt-3 bg-muted/30 border-b">
             <div className="flex gap-1">
-              {(['personal', 'employment', 'compensation', 'government'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setFormTab(tab)}
-                  className={cn(
-                    'px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px',
-                    formTab === tab
-                      ? 'text-foreground border-primary bg-background'
-                      : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-background/50'
-                  )}
-                >
+              {(['personal', 'contact', 'employment', 'compensation'] as const).map((tab) => (
+                <button key={tab} type="button" onClick={() => setFormTab(tab)}
+                  className={cn('px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px',
+                    formTab === tab ? 'text-foreground border-primary bg-background' : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-background/50'
+                  )}>
                   {tab === 'personal' && 'Personal Info'}
+                  {tab === 'contact' && 'Contact & IDs'}
                   {tab === 'employment' && 'Employment'}
                   {tab === 'compensation' && 'Compensation'}
-                  {tab === 'government' && 'Government IDs'}
                 </button>
               ))}
             </div>
@@ -627,24 +621,13 @@ export default function EmployeesPage() {
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <form id="employee-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
-              {/* ─── Personal Info Tab ──────────────────────────────── */}
+              {/* ─── Tab 1: Personal Info ───────────────────────────── */}
               {formTab === 'personal' && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Employee Number</Label>
-                      <Input {...register('employeeNumber')} placeholder="Auto-generated if blank" />
-                    </div>
-                    <div />
-                  </div>
-
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">First Name <span className="text-red-500">*</span></Label>
-                      <Input
-                        {...register('firstName')}
-                        className={cn(errors.firstName && 'border-red-300 focus-visible:ring-red-200')}
-                      />
+                      <Input {...register('firstName')} className={cn(errors.firstName && 'border-red-300 focus-visible:ring-red-200')} />
                       {errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}
                     </div>
                     <div className="space-y-1.5">
@@ -653,10 +636,7 @@ export default function EmployeesPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Last Name <span className="text-red-500">*</span></Label>
-                      <Input
-                        {...register('lastName')}
-                        className={cn(errors.lastName && 'border-red-300 focus-visible:ring-red-200')}
-                      />
+                      <Input {...register('lastName')} className={cn(errors.lastName && 'border-red-300 focus-visible:ring-red-200')} />
                       {errors.lastName && <p className="text-xs text-red-500">{errors.lastName.message}</p>}
                     </div>
                     <div className="space-y-1.5">
@@ -667,44 +647,28 @@ export default function EmployeesPage() {
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Gender</Label>
-                      <Controller
-                        control={control}
-                        name="gender"
-                        render={({ field }) => (
-                          <Select value={field.value || ''} onValueChange={field.onChange}>
-                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="MALE">Male</SelectItem>
-                              <SelectItem value="FEMALE">Female</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
+                      <Label className="text-sm">Gender <span className="text-red-500">*</span></Label>
+                      <Controller control={control} name="gender" render={({ field }) => (
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent><SelectItem value="MALE">Male</SelectItem><SelectItem value="FEMALE">Female</SelectItem></SelectContent>
+                        </Select>
+                      )} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Birth Date</Label>
+                      <Label className="text-sm">Date of Birth <span className="text-red-500">*</span></Label>
                       <Controller control={control} name="birthDate" render={({ field }) => (
                         <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
                       )} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Civil Status</Label>
-                      <Controller
-                        control={control}
-                        name="civilStatus"
-                        render={({ field }) => (
-                          <Select value={field.value || ''} onValueChange={field.onChange}>
-                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="SINGLE">Single</SelectItem>
-                              <SelectItem value="MARRIED">Married</SelectItem>
-                              <SelectItem value="WIDOWED">Widowed</SelectItem>
-                              <SelectItem value="SEPARATED">Separated</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
+                      <Label className="text-sm">Civil Status <span className="text-red-500">*</span></Label>
+                      <Controller control={control} name="civilStatus" render={({ field }) => (
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent><SelectItem value="SINGLE">Single</SelectItem><SelectItem value="MARRIED">Married</SelectItem><SelectItem value="WIDOWED">Widowed</SelectItem><SelectItem value="SEPARATED">Separated</SelectItem></SelectContent>
+                        </Select>
+                      )} />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Nationality</Label>
@@ -712,125 +676,151 @@ export default function EmployeesPage() {
                     </div>
                   </div>
 
-                  {/* Contact & Address */}
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-3">Contact & Address</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Phone</Label>
-                      <Input {...register('phone')} placeholder="+63 9XX XXX XXXX" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Email</Label>
-                      <Input type="email" {...register('email')} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Address</Label>
-                      <Input {...register('address')} />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Address</Label>
+                    <Input {...register('address')} placeholder="Street address" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">City / Municipality</Label>
-                      <Input {...register('city')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Province</Label>
-                      <Input {...register('province')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Zip Code</Label>
-                      <Input {...register('zipCode')} />
-                    </div>
+                    <div className="space-y-1.5"><Label className="text-sm">City / Municipality</Label><Input {...register('city')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Province</Label><Input {...register('province')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Zip Code</Label><Input {...register('zipCode')} /></div>
                   </div>
 
-                  {/* Emergency Contact */}
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-3">Emergency Contact</p>
-                  </div>
+                  <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Emergency Contact</p></div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Contact Person</Label>
-                      <Input {...register('emergencyContact')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Contact Number</Label>
-                      <Input {...register('emergencyPhone')} />
-                    </div>
+                    <div className="space-y-1.5"><Label className="text-sm">Contact Person</Label><Input {...register('emergencyContact')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Contact Number</Label><Input {...register('emergencyPhone')} placeholder="09XXXXXXXXX" /></div>
                   </div>
                 </>
               )}
 
-              {/* ─── Employment Tab ─────────────────────────────────── */}
-              {formTab === 'employment' && (
+              {/* ─── Tab 2: Contact & IDs ───────────────────────────── */}
+              {formTab === 'contact' && (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">Email</Label><Input type="email" {...register('email')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Phone Number</Label><Input {...register('phone')} placeholder="09XXXXXXXXX" /></div>
+                  </div>
+
+                  <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Government IDs</p></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">TIN Number</Label><Input {...register('tinNumber')} placeholder="123-456-789-000" /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">SSS Number</Label><Input {...register('sssNumber')} placeholder="12-3456789-0" /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">PhilHealth Number</Label><Input {...register('philhealthNumber')} placeholder="12-345678901-2" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">Pag-IBIG Number</Label><Input {...register('pagibigNumber')} placeholder="1234-5678-9012" /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Employee Number</Label><Input {...register('employeeNumber')} placeholder="Auto-generated if blank" /></div>
+                  </div>
+
+                  <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Contribution Exemptions</p></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <Controller control={control} name="sssExempt" render={({ field }) => (
+                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">SSS Exempt</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
+                    )} />
+                    <Controller control={control} name="philhealthExempt" render={({ field }) => (
+                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">PhilHealth</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
+                    )} />
+                    <Controller control={control} name="pagibigExempt" render={({ field }) => (
+                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Pag-IBIG</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
+                    )} />
+                    <Controller control={control} name="taxExempt" render={({ field }) => (
+                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Tax Exempt</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
+                    )} />
+                  </div>
+                </>
+              )}
+
+              {/* ─── Tab 3: Employment ──────────────────────────────── */}
+              {formTab === 'employment' && (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Department</Label>
-                      <Controller control={control} name="departmentId" render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                          <SelectContent>
-                            {(departments.data ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                          </SelectContent>
+                      <Label className="text-sm">Company</Label>
+                      <Controller control={control} name="departmentId" render={() => (
+                        <Select onValueChange={() => {}}>
+                          <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
+                          <SelectContent>{(companiesLookup.data ?? []).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                         </Select>
                       )} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Position</Label>
+                      <Label className="text-sm">Site <span className="text-red-500">*</span></Label>
+                      <Controller control={control} name="siteId" render={({ field }) => (
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select site" /></SelectTrigger>
+                          <SelectContent>{(sites.data ?? []).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Department <span className="text-red-500">*</span></Label>
+                      <Controller control={control} name="departmentId" render={({ field }) => (
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select dept" /></SelectTrigger>
+                          <SelectContent>{(departments.data ?? []).map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Position <span className="text-red-500">*</span></Label>
                       <Controller control={control} name="positionId" render={({ field }) => (
                         <Select value={field.value || ''} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue placeholder="Select position" /></SelectTrigger>
-                          <SelectContent>
-                            {(positions.data ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                          </SelectContent>
+                          <SelectContent>{(positions.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                         </Select>
                       )} />
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Site / Branch</Label>
-                      <Controller control={control} name="siteId" render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select site" /></SelectTrigger>
-                          <SelectContent>
-                            {(sites.data ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                    </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Schedule</Label>
                       <Controller control={control} name="scheduleId" render={({ field }) => (
                         <Select value={field.value || ''} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue placeholder="Select schedule" /></SelectTrigger>
-                          <SelectContent>
-                            {(schedules.data ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                          </SelectContent>
+                          <SelectContent>{(schedules.data ?? []).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                         </Select>
                       )} />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">Rate Table</Label>
                       <Controller control={control} name="rateId" render={({ field }) => (
                         <Select value={field.value || ''} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue placeholder="Select rate" /></SelectTrigger>
-                          <SelectContent>
-                            {(rates.data ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                          </SelectContent>
+                          <SelectContent>{(rates.data ?? []).map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
                         </Select>
                       )} />
                     </div>
                   </div>
 
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-3">Employment Details</p>
+                  <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Employment Details</p></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Hire Date <span className="text-red-500">*</span></Label>
+                      <Controller control={control} name="dateHired" render={({ field }) => (
+                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                      )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Regularization Date</Label>
+                      <Controller control={control} name="dateRegularized" render={({ field }) => (
+                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                      )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Employment Status <span className="text-red-500">*</span></Label>
+                      <Controller control={control} name="employmentStatus" render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ACTIVE">Active</SelectItem><SelectItem value="PROBATIONARY">Probationary</SelectItem>
+                            <SelectItem value="CONTRACTUAL">Contractual</SelectItem><SelectItem value="PART_TIME">Part-Time</SelectItem>
+                            <SelectItem value="RESIGNED">Resigned</SelectItem><SelectItem value="TERMINATED">Terminated</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )} />
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -838,65 +828,25 @@ export default function EmployeesPage() {
                       <Controller control={control} name="employmentType" render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="REGULAR">Regular</SelectItem>
-                            <SelectItem value="PROBATIONARY">Probationary</SelectItem>
-                            <SelectItem value="CONTRACTUAL">Contractual</SelectItem>
-                            <SelectItem value="PART_TIME">Part-Time</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Employment Status</Label>
-                      <Controller control={control} name="employmentStatus" render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ACTIVE">Active</SelectItem>
-                            <SelectItem value="RESIGNED">Resigned</SelectItem>
-                            <SelectItem value="TERMINATED">Terminated</SelectItem>
-                            <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                          </SelectContent>
+                          <SelectContent><SelectItem value="REGULAR">Regular</SelectItem><SelectItem value="PROBATIONARY">Probationary</SelectItem><SelectItem value="CONTRACTUAL">Contractual</SelectItem><SelectItem value="PART_TIME">Part-Time</SelectItem></SelectContent>
                         </Select>
                       )} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Date Hired</Label>
-                      <Controller control={control} name="dateHired" render={({ field }) => (
-                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
-                      )} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Date Regularized</Label>
-                      <Controller control={control} name="dateRegularized" render={({ field }) => (
-                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
-                      )} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Remarks</Label>
-                    <Textarea {...register('remarks')} placeholder="Additional notes..." className="min-h-[80px]" />
-                  </div>
+                  <div className="space-y-1.5"><Label className="text-sm">Remarks</Label><Textarea {...register('remarks')} placeholder="Additional notes..." className="min-h-[60px]" /></div>
                 </>
               )}
 
-              {/* ─── Compensation Tab ──────────────────────────────── */}
+              {/* ─── Tab 4: Compensation ────────────────────────────── */}
               {formTab === 'compensation' && (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Pay Type</Label>
+                      <Label className="text-sm">Pay Type <span className="text-red-500">*</span></Label>
                       <Controller control={control} name="payType" render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MONTHLY">Monthly</SelectItem>
-                            <SelectItem value="DAILY">Daily</SelectItem>
-                          </SelectContent>
+                          <SelectContent><SelectItem value="MONTHLY">Monthly</SelectItem><SelectItem value="DAILY">Daily</SelectItem></SelectContent>
                         </Select>
                       )} />
                     </div>
@@ -905,107 +855,24 @@ export default function EmployeesPage() {
                       <Controller control={control} name="payFrequency" render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MONTHLY">Monthly</SelectItem>
-                            <SelectItem value="SEMI_MONTHLY">Semi-Monthly</SelectItem>
-                            <SelectItem value="WEEKLY">Weekly</SelectItem>
-                          </SelectContent>
+                          <SelectContent><SelectItem value="MONTHLY">Monthly</SelectItem><SelectItem value="SEMI_MONTHLY">Semi-Monthly</SelectItem><SelectItem value="WEEKLY">Weekly</SelectItem></SelectContent>
                         </Select>
                       )} />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Basic Salary</Label>
-                      <Input type="number" step="0.01" {...register('basicSalary')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Daily Rate</Label>
-                      <Input type="number" step="0.01" {...register('dailyRate')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Hourly Rate</Label>
-                      <Input type="number" step="0.01" {...register('hourlyRate')} />
-                    </div>
+                    <div className="space-y-1.5"><Label className="text-sm">Basic Salary (₱)</Label><Input type="number" step="0.01" {...register('basicSalary')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Daily Rate (₱)</Label><Input type="number" step="0.01" {...register('dailyRate')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Hourly Rate (₱)</Label><Input type="number" step="0.01" {...register('hourlyRate')} /></div>
                   </div>
 
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-3">Allowances (per cutoff)</p>
-                  </div>
+                  <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Allowances (Monthly)</p></div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Rice</Label>
-                      <Input type="number" step="0.01" {...register('riceAllowance')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Clothing</Label>
-                      <Input type="number" step="0.01" {...register('clothingAllowance')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Laundry</Label>
-                      <Input type="number" step="0.01" {...register('laundryAllowance')} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Other</Label>
-                      <Input type="number" step="0.01" {...register('otherAllowance')} />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* ─── Government IDs Tab ────────────────────────────── */}
-              {formTab === 'government' && (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">SSS Number</Label>
-                      <Input {...register('sssNumber')} placeholder="XX-XXXXXXX-X" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">PhilHealth Number</Label>
-                      <Input {...register('philhealthNumber')} placeholder="XX-XXXXXXXXX-X" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Pag-IBIG Number</Label>
-                      <Input {...register('pagibigNumber')} placeholder="XXXX-XXXX-XXXX" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">TIN Number</Label>
-                      <Input {...register('tinNumber')} placeholder="XXX-XXX-XXX-XXX" />
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-3">Contribution Exemptions</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Controller control={control} name="sssExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label className="text-sm">SSS Exempt</Label>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </div>
-                    )} />
-                    <Controller control={control} name="philhealthExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label className="text-sm">PhilHealth Exempt</Label>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </div>
-                    )} />
-                    <Controller control={control} name="pagibigExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label className="text-sm">Pag-IBIG Exempt</Label>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </div>
-                    )} />
-                    <Controller control={control} name="taxExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label className="text-sm">Tax Exempt</Label>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </div>
-                    )} />
+                    <div className="space-y-1.5"><Label className="text-sm">Rice (₱)</Label><Input type="number" step="0.01" {...register('riceAllowance')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Clothing (₱)</Label><Input type="number" step="0.01" {...register('clothingAllowance')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Laundry (₱)</Label><Input type="number" step="0.01" {...register('laundryAllowance')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Other (₱)</Label><Input type="number" step="0.01" {...register('otherAllowance')} /></div>
                   </div>
                 </>
               )}
