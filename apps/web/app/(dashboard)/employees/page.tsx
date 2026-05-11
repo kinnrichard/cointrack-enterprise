@@ -621,22 +621,22 @@ export default function EmployeesPage() {
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <form id="employee-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
-              {/* ─── Tab 1: Personal Info ───────────────────────────── */}
+              {/* ─── Tab 1: Personal Information ──────────────────── */}
               {formTab === 'personal' && (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">First Name <span className="text-red-500">*</span></Label>
-                      <Input {...register('firstName')} className={cn(errors.firstName && 'border-red-300 focus-visible:ring-red-200')} />
+                      <Input {...register('firstName')} placeholder="Juan" className={cn(errors.firstName && 'border-red-300 focus-visible:ring-red-200')} />
                       {errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Middle Name</Label>
-                      <Input {...register('middleName')} />
+                      <Input {...register('middleName')} placeholder="Santos" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Last Name <span className="text-red-500">*</span></Label>
-                      <Input {...register('lastName')} className={cn(errors.lastName && 'border-red-300 focus-visible:ring-red-200')} />
+                      <Input {...register('lastName')} placeholder="Dela Cruz" className={cn(errors.lastName && 'border-red-300 focus-visible:ring-red-200')} />
                       {errors.lastName && <p className="text-xs text-red-500">{errors.lastName.message}</p>}
                     </div>
                     <div className="space-y-1.5">
@@ -678,18 +678,19 @@ export default function EmployeesPage() {
 
                   <div className="space-y-1.5">
                     <Label className="text-sm">Address</Label>
-                    <Input {...register('address')} placeholder="Street address" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5"><Label className="text-sm">City / Municipality</Label><Input {...register('city')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Province</Label><Input {...register('province')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Zip Code</Label><Input {...register('zipCode')} /></div>
+                    <Textarea {...register('address')} placeholder="Complete address" className="min-h-[40px]" />
                   </div>
 
                   <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Emergency Contact</p></div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label className="text-sm">Contact Person</Label><Input {...register('emergencyContact')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Contact Number</Label><Input {...register('emergencyPhone')} placeholder="09XXXXXXXXX" /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">Emergency Contact Name</Label><Input {...register('emergencyContact')} placeholder="Full name" /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Emergency Contact Number</Label><Input {...register('emergencyPhone')} placeholder="09171234567" maxLength={11} /></div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Relationship</Label>
+                      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <option value="">Select</option><option value="spouse">Spouse</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="relative">Relative</option><option value="friend">Friend</option><option value="other">Other</option>
+                      </select>
+                    </div>
                   </div>
                 </>
               )}
@@ -731,18 +732,16 @@ export default function EmployeesPage() {
                 </>
               )}
 
-              {/* ─── Tab 3: Employment ──────────────────────────────── */}
+              {/* ─── Tab 3: Employment Details ────────────────────── */}
               {formTab === 'employment' && (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Company</Label>
-                      <Controller control={control} name="departmentId" render={() => (
-                        <Select onValueChange={() => {}}>
-                          <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
-                          <SelectContent>{(companiesLookup.data ?? []).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      )} />
+                      <Label className="text-sm">Company <span className="text-red-500">*</span></Label>
+                      <Select onValueChange={() => {}}>
+                        <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
+                        <SelectContent>{(companiesLookup.data ?? []).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Site <span className="text-red-500">*</span></Label>
@@ -814,9 +813,14 @@ export default function EmployeesPage() {
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ACTIVE">Active</SelectItem><SelectItem value="PROBATIONARY">Probationary</SelectItem>
-                            <SelectItem value="CONTRACTUAL">Contractual</SelectItem><SelectItem value="PART_TIME">Part-Time</SelectItem>
-                            <SelectItem value="RESIGNED">Resigned</SelectItem><SelectItem value="TERMINATED">Terminated</SelectItem>
+                            <SelectItem value="PROBATIONARY">Probationary</SelectItem>
+                            <SelectItem value="ACTIVE">Regular</SelectItem>
+                            <SelectItem value="CONTRACTUAL">Contractual</SelectItem>
+                            <SelectItem value="PROJECT_BASED">Project-Based</SelectItem>
+                            <SelectItem value="PART_TIME">Part-Time</SelectItem>
+                            <SelectItem value="OJT">OJT</SelectItem>
+                            <SelectItem value="RESIGNED">Resigned</SelectItem>
+                            <SelectItem value="TERMINATED">Terminated</SelectItem>
                           </SelectContent>
                         </Select>
                       )} />
@@ -824,11 +828,15 @@ export default function EmployeesPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Employment Type</Label>
+                      <Label className="text-sm">Employee Type <span className="text-red-500">*</span></Label>
                       <Controller control={control} name="employmentType" render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="REGULAR">Regular</SelectItem><SelectItem value="PROBATIONARY">Probationary</SelectItem><SelectItem value="CONTRACTUAL">Contractual</SelectItem><SelectItem value="PART_TIME">Part-Time</SelectItem></SelectContent>
+                          <SelectContent>
+                            <SelectItem value="REGULAR">Rank and File</SelectItem>
+                            <SelectItem value="PROBATIONARY">Supervisor</SelectItem>
+                            <SelectItem value="CONTRACTUAL">Manager</SelectItem>
+                          </SelectContent>
                         </Select>
                       )} />
                     </div>
@@ -862,17 +870,17 @@ export default function EmployeesPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5"><Label className="text-sm">Basic Salary (₱)</Label><Input type="number" step="0.01" {...register('basicSalary')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Daily Rate (₱)</Label><Input type="number" step="0.01" {...register('dailyRate')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Hourly Rate (₱)</Label><Input type="number" step="0.01" {...register('hourlyRate')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Basic Salary</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('basicSalary')} className="pl-7" placeholder="25000" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Daily Rate</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('dailyRate')} className="pl-7" placeholder="610" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Hourly Rate</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('hourlyRate')} className="pl-7" placeholder="76.25" /></div></div>
                   </div>
 
                   <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Allowances (Monthly)</p></div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="space-y-1.5"><Label className="text-sm">Rice (₱)</Label><Input type="number" step="0.01" {...register('riceAllowance')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Clothing (₱)</Label><Input type="number" step="0.01" {...register('clothingAllowance')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Laundry (₱)</Label><Input type="number" step="0.01" {...register('laundryAllowance')} /></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Other (₱)</Label><Input type="number" step="0.01" {...register('otherAllowance')} /></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Rice Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('riceAllowance')} className="pl-7" placeholder="1500" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Clothing Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('clothingAllowance')} className="pl-7" placeholder="500" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Laundry Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('laundryAllowance')} className="pl-7" placeholder="300" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Other Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('otherAllowance')} className="pl-7" placeholder="500" /></div></div>
                   </div>
                 </>
               )}
