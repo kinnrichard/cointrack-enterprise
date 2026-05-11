@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Banknote, Filter, X, Loader2, Play } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/page-header';
@@ -145,9 +146,9 @@ export default function PayrollPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Period Range</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input type="date" value={filterStartDate} onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }} className="h-9 rounded-lg text-xs" />
-                      <Input type="date" value={filterEndDate} onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }} className="h-9 rounded-lg text-xs" />
+                    <div className="grid grid-cols-1 gap-2">
+                      <DatePicker value={filterStartDate ? new Date(filterStartDate) : undefined} onChange={(d) => { setFilterStartDate(d ? format(d, 'yyyy-MM-dd') : ''); setPage(1); }} placeholder="From" className="h-9 text-xs" />
+                      <DatePicker value={filterEndDate ? new Date(filterEndDate) : undefined} onChange={(d) => { setFilterEndDate(d ? format(d, 'yyyy-MM-dd') : ''); setPage(1); }} placeholder="To" className="h-9 text-xs" />
                     </div>
                   </div>
                 </div>

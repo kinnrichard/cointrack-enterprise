@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { FileBarChart, Filter, X } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { DataTable, Column } from '@/components/data-table';
@@ -91,9 +93,9 @@ export default function GovernmentRemittancePage() {
                 <div className="p-4 space-y-4">
                   <div className="space-y-1.5">
                     <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Period</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input type="date" value={filterStart} onChange={(e) => { setFilterStart(e.target.value); setPage(1); }} className="h-9 rounded-lg text-xs" />
-                      <Input type="date" value={filterEnd} onChange={(e) => { setFilterEnd(e.target.value); setPage(1); }} className="h-9 rounded-lg text-xs" />
+                    <div className="grid grid-cols-1 gap-2">
+                      <DatePicker value={filterStart ? new Date(filterStart) : undefined} onChange={(d) => { setFilterStart(d ? format(d, 'yyyy-MM-dd') : ''); setPage(1); }} placeholder="From" className="h-9 text-xs" />
+                      <DatePicker value={filterEnd ? new Date(filterEnd) : undefined} onChange={(d) => { setFilterEnd(d ? format(d, 'yyyy-MM-dd') : ''); setPage(1); }} placeholder="To" className="h-9 text-xs" />
                     </div>
                   </div>
                 </div>
