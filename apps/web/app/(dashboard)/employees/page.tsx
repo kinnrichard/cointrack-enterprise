@@ -113,13 +113,13 @@ const employeeSchema = z.object({
   scheduleId: z.string().optional().or(z.literal('')),
   rateId: z.string().optional().or(z.literal('')),
   employmentType: z.string().default('REGULAR'),
-  employmentStatus: z.string().default('ACTIVE'),
+  employmentStatus: z.string().default('PROBATIONARY'),
   dateHired: z.string().optional().or(z.literal('')),
   dateRegularized: z.string().optional().or(z.literal('')),
   basicSalary: z.coerce.number().min(0).default(0),
   dailyRate: z.coerce.number().min(0).default(0),
   hourlyRate: z.coerce.number().min(0).default(0),
-  payType: z.string().default('DAILY'),
+  payType: z.string().default('MONTHLY'),
   payFrequency: z.string().default('SEMI_MONTHLY'),
   riceAllowance: z.coerce.number().min(0).default(0),
   clothingAllowance: z.coerce.number().min(0).default(0),
@@ -148,11 +148,11 @@ const DEFAULTS: EmployeeFormData = {
   address: '', city: '', province: '', zipCode: '',
   phone: '', email: '', emergencyContact: '', emergencyPhone: '',
   departmentId: '', positionId: '', siteId: '', scheduleId: '', rateId: '',
-  employmentType: 'REGULAR', employmentStatus: 'ACTIVE',
-  dateHired: '', dateRegularized: '',
-  basicSalary: 0, dailyRate: 0, hourlyRate: 0,
-  payType: 'DAILY', payFrequency: 'SEMI_MONTHLY',
-  riceAllowance: 0, clothingAllowance: 0, laundryAllowance: 0, otherAllowance: 0,
+  employmentType: 'REGULAR', employmentStatus: 'PROBATIONARY',
+  dateHired: format(new Date(), 'yyyy-MM-dd'), dateRegularized: '',
+  basicSalary: '' as any, dailyRate: '' as any, hourlyRate: '' as any,
+  payType: 'MONTHLY', payFrequency: 'SEMI_MONTHLY',
+  riceAllowance: '' as any, clothingAllowance: '' as any, laundryAllowance: '' as any, otherAllowance: '' as any,
   sssNumber: '', philhealthNumber: '', pagibigNumber: '', tinNumber: '',
   sssExempt: false, philhealthExempt: false, pagibigExempt: false, taxExempt: false,
   remarks: '',
@@ -213,6 +213,7 @@ export default function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [formTab, setFormTab] = useState<'personal' | 'contact' | 'employment' | 'compensation'>('personal');
+  const [selectedCompany, setSelectedCompany] = useState('');
 
   const activeFilterCount = [deptFilter, siteFilter, typeFilter !== 'all' ? typeFilter : ''].filter(Boolean).length;
 
@@ -226,8 +227,8 @@ export default function EmployeesPage() {
   // ─── Form ───────────────────────────────────────────────────────────
 
   const {
-    register, handleSubmit, reset, control,
-    formState: { errors, isValid },
+    register, handleSubmit, reset, control, setValue,
+    formState: { errors, isValid }, watch,
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: DEFAULTS,
@@ -687,9 +688,18 @@ export default function EmployeesPage() {
                     <div className="space-y-1.5"><Label className="text-sm">Emergency Contact Number</Label><Input {...register('emergencyPhone')} placeholder="09171234567" maxLength={11} /></div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Relationship</Label>
-                      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                        <option value="">Select</option><option value="spouse">Spouse</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="child">Child</option><option value="relative">Relative</option><option value="friend">Friend</option><option value="other">Other</option>
-                      </select>
+                      <Select>
+                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SPOUSE">Spouse</SelectItem>
+                          <SelectItem value="PARENT">Parent</SelectItem>
+                          <SelectItem value="SIBLING">Sibling</SelectItem>
+                          <SelectItem value="CHILD">Child</SelectItem>
+                          <SelectItem value="RELATIVE">Relative</SelectItem>
+                          <SelectItem value="FRIEND">Friend</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </>
@@ -714,21 +724,6 @@ export default function EmployeesPage() {
                     <div className="space-y-1.5"><Label className="text-sm">Employee Number</Label><Input {...register('employeeNumber')} placeholder="Auto-generated if blank" /></div>
                   </div>
 
-                  <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Contribution Exemptions</p></div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Controller control={control} name="sssExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">SSS Exempt</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
-                    )} />
-                    <Controller control={control} name="philhealthExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">PhilHealth</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
-                    )} />
-                    <Controller control={control} name="pagibigExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Pag-IBIG</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
-                    )} />
-                    <Controller control={control} name="taxExempt" render={({ field }) => (
-                      <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Tax Exempt</Label><Switch checked={field.value} onCheckedChange={field.onChange} /></div>
-                    )} />
-                  </div>
                 </>
               )}
 
@@ -738,7 +733,7 @@ export default function EmployeesPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">Company <span className="text-red-500">*</span></Label>
-                      <Select onValueChange={() => {}}>
+                      <Select value={selectedCompany} onValueChange={(v) => { setSelectedCompany(v); setValue('siteId', ''); }}>
                         <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
                         <SelectContent>{(companiesLookup.data ?? []).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                       </Select>
@@ -746,9 +741,9 @@ export default function EmployeesPage() {
                     <div className="space-y-1.5">
                       <Label className="text-sm">Site <span className="text-red-500">*</span></Label>
                       <Controller control={control} name="siteId" render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select site" /></SelectTrigger>
-                          <SelectContent>{(sites.data ?? []).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                        <Select value={field.value || ''} onValueChange={field.onChange} disabled={!selectedCompany}>
+                          <SelectTrigger><SelectValue placeholder={selectedCompany ? 'Select site' : 'Select company first'} /></SelectTrigger>
+                          <SelectContent>{(sites.data ?? []).filter((s: any) => !selectedCompany || s.companyId === selectedCompany).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                         </Select>
                       )} />
                     </div>
@@ -846,7 +841,9 @@ export default function EmployeesPage() {
               )}
 
               {/* ─── Tab 4: Compensation ────────────────────────────── */}
-              {formTab === 'compensation' && (
+              {formTab === 'compensation' && (() => {
+                const payTypeValue = watch('payType');
+                return (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -858,8 +855,36 @@ export default function EmployeesPage() {
                         </Select>
                       )} />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Pay Frequency</Label>
+                    {payTypeValue === 'MONTHLY' ? (
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Basic Salary <span className="text-red-500">*</span></Label>
+                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('basicSalary')} className="pl-7" placeholder="25000" /></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Rate Table <span className="text-red-500">*</span></Label>
+                        <Controller control={control} name="rateId" render={({ field }) => (
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
+                            <SelectTrigger><SelectValue placeholder="Select rate" /></SelectTrigger>
+                            <SelectContent>{(rates.data ?? []).map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+                          </Select>
+                        )} />
+                      </div>
+                    )}
+                  </div>
+
+                  {payTypeValue === 'MONTHLY' && (
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <Label className="text-sm">Fixed Monthly</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">If ON: Uses semi-monthly rate minus absences. If OFF: Uses daily rate × days worked (default).</p>
+                      </div>
+                      <Switch />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">Pay Frequency</Label>
                       <Controller control={control} name="payFrequency" render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -867,12 +892,9 @@ export default function EmployeesPage() {
                         </Select>
                       )} />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5"><Label className="text-sm">Basic Salary</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('basicSalary')} className="pl-7" placeholder="25000" /></div></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Daily Rate</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('dailyRate')} className="pl-7" placeholder="610" /></div></div>
-                    <div className="space-y-1.5"><Label className="text-sm">Hourly Rate</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('hourlyRate')} className="pl-7" placeholder="76.25" /></div></div>
+                    {payTypeValue === 'DAILY' && (
+                      <div className="space-y-1.5"><Label className="text-sm">Daily Rate</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('dailyRate')} className="pl-7" placeholder="610" /></div></div>
+                    )}
                   </div>
 
                   <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Allowances (Monthly)</p></div>
@@ -883,7 +905,8 @@ export default function EmployeesPage() {
                     <div className="space-y-1.5"><Label className="text-sm">Other Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('otherAllowance')} className="pl-7" placeholder="500" /></div></div>
                   </div>
                 </>
-              )}
+                );
+              })()}
             </form>
           </div>
 
