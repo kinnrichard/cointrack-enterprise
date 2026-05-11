@@ -1,0 +1,51 @@
+import { Controller, Post, Body, Get, Res, HttpCode, UseGuards, Req } from '@nestjs/common';
+import { Response } from 'express';
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Post('login')
+  @HttpCode(200)
+  async login(
+    @Body() body: { companyCode: string; email: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(body.companyCode, body.email, body.password);
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    return { accessToken: result.accessToken, user: result.user };
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  async refresh(@Body() body: { refreshToken: string }) {
+    return this.authService.refresh(body.refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@Body() body: { refreshToken: string }, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logout(body.refreshToken);
+    res.clearCookie('refreshToken');
+    return { message: 'Logged out' };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@Req() req: any) {
+    return this.authService.getProfile(req.user.id);
+  }
+
+  @Get('tenant')
+  @UseGuards(JwtAuthGuard)
+  async getTenant(@Req() req: any) {
+    return this.authService.getTenant(req.user.tenantId);
+  }
+}

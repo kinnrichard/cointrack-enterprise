@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+.turbo
+*.tsbuildinfo
+.env
+.env.local
+uploads/
+coverage/
+apps/api/.env
+apps/web/.env
+.claude/

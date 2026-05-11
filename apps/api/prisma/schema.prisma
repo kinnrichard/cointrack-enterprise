@@ -1,0 +1,1100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Multi-Tenancy ──────────────────────────────────────────────────────────
+
+model Tenant {
+  id          String   @id @default(uuid())
+  companyName String   @unique
+  companyCode String   @unique
+  domain      String?
+  logo        String?
+  status      String   @default("ACTIVE")
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users              User[]
+  departments        Department[]
+  positions          Position[]
+  sites              Site[]
+  employees          Employee[]
+  schedules          Schedule[]
+  rates              Rate[]
+  holidays           Holiday[]
+  attendance         Attendance[]
+  timekeeping        Timekeeping[]
+  payrolls           Payroll[]
+  leaveTypes         LeaveType[]
+  leaveCredits       LeaveCredit[]
+  leaveApplications  LeaveApplication[]
+  overtimeApplications OvertimeApplication[]
+  deductions         Deduction[]
+  loans              Loan[]
+  roles              Role[]
+  rolePermissions    RolePermission[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  adjustmentTypes    AdjustmentType[]
+  jobPostings        JobPosting[]
+  candidates         Candidate[]
+  companies          Company[]
+
+  // Settings
+  companySettings                CompanySetting[]
+  governmentContributionSettings GovernmentContributionSetting[]
+  attendanceSettings             AttendanceSetting[]
+  payrollPeriodSettings          PayrollPeriodSetting[]
+  leaveSettings                  LeaveSetting[]
+  leaveCreditSettings            LeaveCreditSetting[]
+  overtimeSettings               OvertimeSetting[]
+  holidaySettings                HolidaySetting[]
+  rateCalculationSettings        RateCalculationSetting[]
+  taxTables                      TaxTable[]
+}
+
+// ─── Companies (Client Companies) ──────────────────────────────────────────
+
+model Company {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  code        String?
+  address     String?
+  city        String?
+  province    String?
+  postalCode  String?
+  email       String?
+  phoneNumber String?
+  website     String?
+  logoUrl     String?
+  description String?
+
+  // Government IDs
+  tinNumber        String?
+  sssNumber        String?
+  philhealthNumber String?
+  pagibigNumber    String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+// ─── Auth & Users ───────────────────────────────────────────────────────────
+
+model User {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  email               String
+  passwordHash        String
+  firstName           String
+  lastName            String
+  role                String    @default("EMPLOYEE")
+  phone               String?
+  avatar              String?
+  isActive            Boolean   @default(true)
+  mustChangePassword  Boolean   @default(false)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLogin           DateTime?
+  employeeId          String?   @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  employee     Employee?     @relation(fields: [employeeId], references: [id])
+  refreshTokens RefreshToken[]
+  auditLogs    AuditLog[]
+  notifications Notification[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ─── Roles & Permissions ────────────────────────────────────────────────────
+
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  displayName String?
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  permissions RolePermission[]
+
+  @@unique([tenantId, name])
+}
+
+model RolePermission {
+  id       String @id @default(uuid())
+  tenantId String
+  roleId   String
+  module   String
+  action   String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action])
+  @@index([tenantId])
+}
+
+// ─── Organization Structure ─────────────────────────────────────────────────
+
+model Department {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  code        String?
+  description String?
+  parentId    String?
+  managerId   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  parent    Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children  Department[] @relation("DepartmentHierarchy")
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Position {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  code        String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Site {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  code     String?
+  address  String?
+  isActive Boolean @default(true)
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+// ─── Employee ───────────────────────────────────────────────────────────────
+
+model Employee {
+  id              String   @id @default(uuid())
+  tenantId        String
+  employeeNumber  String?
+  firstName       String
+  middleName      String?
+  lastName        String
+  suffix          String?
+  gender          String?
+  birthDate       DateTime?
+  civilStatus     String?
+  nationality     String?
+  address         String?
+  city            String?
+  province        String?
+  zipCode         String?
+  phone           String?
+  email           String?
+  emergencyContact String?
+  emergencyPhone  String?
+
+  // Employment
+  companyId       String?
+  departmentId    String?
+  positionId      String?
+  siteId          String?
+  scheduleId      String?
+  rateId          String?
+  employmentType  String   @default("REGULAR") // REGULAR, PROBATIONARY, CONTRACTUAL, PART_TIME
+  employmentStatus String  @default("ACTIVE")  // ACTIVE, RESIGNED, TERMINATED, SUSPENDED
+  dateHired       DateTime?
+  dateRegularized DateTime?
+  dateSeparated   DateTime?
+
+  // Compensation
+  basicSalary     Decimal  @default(0) @db.Decimal(12, 2)
+  dailyRate       Decimal  @default(0) @db.Decimal(12, 2)
+  hourlyRate      Decimal  @default(0) @db.Decimal(12, 2)
+  payType         String   @default("DAILY") // MONTHLY, DAILY
+  payFrequency    String   @default("SEMI_MONTHLY") // MONTHLY, SEMI_MONTHLY, WEEKLY
+
+  // Allowances
+  riceAllowance     Decimal @default(0) @db.Decimal(12, 2)
+  clothingAllowance Decimal @default(0) @db.Decimal(12, 2)
+  laundryAllowance  Decimal @default(0) @db.Decimal(12, 2)
+  otherAllowance    Decimal @default(0) @db.Decimal(12, 2)
+
+  // Government IDs
+  sssNumber       String?
+  philhealthNumber String?
+  pagibigNumber   String?
+  tinNumber       String?
+
+  // Gov contribution flags
+  sssExempt       Boolean @default(false)
+  philhealthExempt Boolean @default(false)
+  pagibigExempt   Boolean @default(false)
+  taxExempt       Boolean @default(false)
+
+  photo           String?
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  company      Company?     @relation(fields: [companyId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  position     Position?    @relation(fields: [positionId], references: [id])
+  site         Site?        @relation(fields: [siteId], references: [id])
+  schedule     Schedule?    @relation(fields: [scheduleId], references: [id])
+  rate         Rate?        @relation(fields: [rateId], references: [id])
+  user         User?
+  employeeSchedules EmployeeSchedule[]
+  attendance        Attendance[]
+  timekeepingData   TimekeepingData[]
+  payrolls          Payroll[]
+  leaveCredits      LeaveCredit[]
+  leaveApplications LeaveApplication[]
+  overtimeApplications OvertimeApplication[]
+  deductions        Deduction[]
+  loans             Loan[]
+  documents         EmployeeDocument[]
+  fingerprints      Fingerprint[]
+
+  @@unique([tenantId, employeeNumber])
+  @@index([tenantId])
+  @@index([departmentId])
+  @@index([siteId])
+}
+
+model EmployeeDocument {
+  id         String   @id @default(uuid())
+  employeeId String
+  name       String
+  fileName   String
+  fileUrl    String
+  fileSize   Int?
+  mimeType   String?
+  category   String?
+  createdAt  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model Fingerprint {
+  id             String @id @default(uuid())
+  employeeId     String
+  fingerPosition Int
+  sampleIndex    Int    @default(0)
+  template       String @db.Text
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, fingerPosition, sampleIndex])
+}
+
+// ─── Schedules & Rates ──────────────────────────────────────────────────────
+
+model Schedule {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  code     String?
+  timeIn   String  // "07:00"
+  timeOut  String  // "16:00"
+  noBreak  Boolean @default(false)
+
+  // Work days (true = work day)
+  monday    Boolean @default(true)
+  tuesday   Boolean @default(true)
+  wednesday Boolean @default(true)
+  thursday  Boolean @default(true)
+  friday    Boolean @default(true)
+  saturday  Boolean @default(false)
+  sunday    Boolean @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+  employeeSchedules EmployeeSchedule[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model EmployeeSchedule {
+  id         String    @id @default(uuid())
+  employeeId String
+  scheduleId String
+  startDate  DateTime  @db.Date
+  endDate    DateTime? @db.Date
+  remarks    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  schedule Schedule @relation(fields: [scheduleId], references: [id])
+
+  @@index([employeeId])
+  @@index([scheduleId])
+}
+
+model Rate {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  code     String?
+
+  dailyRate  Decimal @default(0) @db.Decimal(12, 2)
+  hourlyRate Decimal @default(0) @db.Decimal(12, 2)
+
+  // Premium multipliers (Philippine labor law)
+  regularOTMultiplier       Decimal @default(1.25) @db.Decimal(5, 4)
+  nightDiffMultiplier       Decimal @default(0.10) @db.Decimal(5, 4)
+  specialHolidayMultiplier  Decimal @default(1.30) @db.Decimal(5, 4)
+  specialHolidayOTMultiplier Decimal @default(1.69) @db.Decimal(5, 4)
+  legalHolidayMultiplier    Decimal @default(2.00) @db.Decimal(5, 4)
+  legalHolidayOTMultiplier  Decimal @default(2.60) @db.Decimal(5, 4)
+  restDayMultiplier         Decimal @default(1.30) @db.Decimal(5, 4)
+  restDayOTMultiplier       Decimal @default(1.69) @db.Decimal(5, 4)
+  doubleHolidayMultiplier   Decimal @default(2.60) @db.Decimal(5, 4)
+  doubleHolidayOTMultiplier Decimal @default(3.38) @db.Decimal(5, 4)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+// ─── Holidays ───────────────────────────────────────────────────────────────
+
+model Holiday {
+  id       String   @id @default(uuid())
+  tenantId String
+  name     String
+  date     DateTime @db.Date
+  type     String   // REGULAR, SPECIAL, LEGAL_AND_SPECIAL
+  isRecurring Boolean @default(false)
+  recurringMonth Int?
+  recurringDay   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([date])
+}
+
+// ─── Attendance ─────────────────────────────────────────────────────────────
+
+model Attendance {
+  id         String   @id @default(uuid())
+  tenantId   String
+  employeeId String
+  date       DateTime @db.Date
+  scheduleId String?
+
+  timeIn     DateTime?
+  timeOut    DateTime?
+  status     String    @default("PRESENT") // PRESENT, ABSENT, LATE, HALF_DAY, ON_LEAVE, REST_DAY
+
+  // Hours breakdown
+  workedHours      Decimal @default(0) @db.Decimal(6, 2)
+  lateMinutes      Decimal @default(0) @db.Decimal(6, 2)
+  undertimeMinutes Decimal @default(0) @db.Decimal(6, 2)
+  overtimeHours    Decimal @default(0) @db.Decimal(6, 2)
+  nightDiffHours   Decimal @default(0) @db.Decimal(6, 2)
+
+  // Day type flags
+  isRestDay        Boolean @default(false)
+  isSpecialHoliday Boolean @default(false)
+  isRegularHoliday Boolean @default(false)
+  isDoubleHoliday  Boolean @default(false)
+  holidayName      String?
+  holidayType      String?
+
+  remarks    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([tenantId])
+  @@index([date])
+}
+
+// ─── Timekeeping ────────────────────────────────────────────────────────────
+
+model Timekeeping {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String?
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  payDate   DateTime? @db.Date
+  cutoffType String  @default("SEMI_MONTHLY") // MONTHLY, SEMI_MONTHLY, WEEKLY
+  status    String   @default("DRAFT")        // DRAFT, PROCESSING, COMPLETED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant            @relation(fields: [tenantId], references: [id])
+  data   TimekeepingData[]
+
+  @@index([tenantId])
+}
+
+model TimekeepingData {
+  id            String @id @default(uuid())
+  timekeepingId String
+  employeeId    String
+
+  daysWorked    Decimal @default(0) @db.Decimal(6, 2)
+  daysAbsent    Decimal @default(0) @db.Decimal(6, 2)
+
+  // Regular hours
+  regularHours       Decimal @default(0) @db.Decimal(8, 2)
+  overtimeHours      Decimal @default(0) @db.Decimal(8, 2)
+  nightDiffHours     Decimal @default(0) @db.Decimal(8, 2)
+  nightDiffOTHours   Decimal @default(0) @db.Decimal(8, 2)
+
+  // Rest day / Special holiday hours
+  restDaySpecialHours     Decimal @default(0) @db.Decimal(8, 2)
+  restDaySpecialOTHours   Decimal @default(0) @db.Decimal(8, 2)
+  restDaySpecialNDHours   Decimal @default(0) @db.Decimal(8, 2)
+  restDaySpecialNDOTHours Decimal @default(0) @db.Decimal(8, 2)
+
+  // Legal holiday hours
+  legalHolidayHours       Decimal @default(0) @db.Decimal(8, 2)
+  legalHolidayOTHours     Decimal @default(0) @db.Decimal(8, 2)
+  legalHolidayNDHours     Decimal @default(0) @db.Decimal(8, 2)
+  legalHolidayNDOTHours   Decimal @default(0) @db.Decimal(8, 2)
+
+  // Double holiday hours
+  doubleHolidayHours      Decimal @default(0) @db.Decimal(8, 2)
+  doubleHolidayOTHours    Decimal @default(0) @db.Decimal(8, 2)
+  doubleHolidayNDHours    Decimal @default(0) @db.Decimal(8, 2)
+  doubleHolidayNDOTHours  Decimal @default(0) @db.Decimal(8, 2)
+
+  // Late/Undertime
+  totalLateMinutes      Decimal @default(0) @db.Decimal(8, 2)
+  totalUndertimeMinutes Decimal @default(0) @db.Decimal(8, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timekeeping Timekeeping @relation(fields: [timekeepingId], references: [id], onDelete: Cascade)
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+
+  @@unique([timekeepingId, employeeId])
+}
+
+// ─── Payroll ────────────────────────────────────────────────────────────────
+
+model Payroll {
+  id         String   @id @default(uuid())
+  tenantId   String
+  employeeId String
+
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+  payDate     DateTime? @db.Date
+  cutoffType  String   @default("SEMI_MONTHLY")
+  status      String   @default("DRAFT") // DRAFT, PENDING, APPROVED, PAID
+
+  // Basic pay
+  basicPay       Decimal @default(0) @db.Decimal(12, 2)
+  daysWorked     Decimal @default(0) @db.Decimal(6, 2)
+
+  // Premium pay breakdown
+  regularOTPay        Decimal @default(0) @db.Decimal(12, 2)
+  nightDiffPay        Decimal @default(0) @db.Decimal(12, 2)
+  nightDiffOTPay      Decimal @default(0) @db.Decimal(12, 2)
+  restDayPay          Decimal @default(0) @db.Decimal(12, 2)
+  restDayOTPay        Decimal @default(0) @db.Decimal(12, 2)
+  restDayNDPay        Decimal @default(0) @db.Decimal(12, 2)
+  restDayNDOTPay      Decimal @default(0) @db.Decimal(12, 2)
+  specialHolidayPay   Decimal @default(0) @db.Decimal(12, 2)
+  specialHolidayOTPay Decimal @default(0) @db.Decimal(12, 2)
+  legalHolidayPay     Decimal @default(0) @db.Decimal(12, 2)
+  legalHolidayOTPay   Decimal @default(0) @db.Decimal(12, 2)
+  doubleHolidayPay    Decimal @default(0) @db.Decimal(12, 2)
+  doubleHolidayOTPay  Decimal @default(0) @db.Decimal(12, 2)
+
+  // Allowances
+  riceAllowance     Decimal @default(0) @db.Decimal(12, 2)
+  clothingAllowance Decimal @default(0) @db.Decimal(12, 2)
+  laundryAllowance  Decimal @default(0) @db.Decimal(12, 2)
+  otherAllowance    Decimal @default(0) @db.Decimal(12, 2)
+
+  // Deductions
+  lateDeduction      Decimal @default(0) @db.Decimal(12, 2)
+  undertimeDeduction Decimal @default(0) @db.Decimal(12, 2)
+  absentDeduction    Decimal @default(0) @db.Decimal(12, 2)
+
+  // Government contributions
+  sssContribution        Decimal @default(0) @db.Decimal(12, 2)
+  philhealthContribution Decimal @default(0) @db.Decimal(12, 2)
+  pagibigContribution    Decimal @default(0) @db.Decimal(12, 2)
+  withholdingTax         Decimal @default(0) @db.Decimal(12, 2)
+
+  // Loan deductions
+  sssLoan       Decimal @default(0) @db.Decimal(12, 2)
+  sssCalamity   Decimal @default(0) @db.Decimal(12, 2)
+  pagibigLoan   Decimal @default(0) @db.Decimal(12, 2)
+  pagibigCalamity Decimal @default(0) @db.Decimal(12, 2)
+  cashAdvance   Decimal @default(0) @db.Decimal(12, 2)
+  companyLoan   Decimal @default(0) @db.Decimal(12, 2)
+
+  // Leave pay
+  leavePay Decimal @default(0) @db.Decimal(12, 2)
+
+  // Totals
+  grossPay       Decimal @default(0) @db.Decimal(12, 2)
+  totalDeductions Decimal @default(0) @db.Decimal(12, 2)
+  netPay         Decimal @default(0) @db.Decimal(12, 2)
+
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  employee    Employee            @relation(fields: [employeeId], references: [id])
+  adjustments PayrollAdjustment[]
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([periodStart, periodEnd])
+}
+
+model PayrollAdjustment {
+  id        String  @id @default(uuid())
+  payrollId String
+  typeId    String?
+  name      String
+  type      String  // EARNING, DEDUCTION
+  amount    Decimal @db.Decimal(12, 2)
+  remarks   String?
+  createdAt DateTime @default(now())
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+}
+
+model AdjustmentType {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  type     String  // EARNING, DEDUCTION
+  isActive Boolean @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+}
+
+// ─── Leave Management ───────────────────────────────────────────────────────
+
+model LeaveType {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  code     String
+  isPaid   Boolean @default(true)
+  maxDays  Int     @default(0)
+  isActive Boolean @default(true)
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id])
+  credits LeaveCredit[]
+  applications LeaveApplication[]
+
+  @@unique([tenantId, code])
+}
+
+model LeaveCredit {
+  id          String  @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  leaveTypeId String
+  year        Int
+  allocated   Decimal @default(0) @db.Decimal(6, 2)
+  used        Decimal @default(0) @db.Decimal(6, 2)
+  adjusted    Decimal @default(0) @db.Decimal(6, 2)
+  balance     Decimal @default(0) @db.Decimal(6, 2)
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveApplication {
+  id          String   @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  leaveTypeId String
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  days        Decimal  @db.Decimal(6, 2)
+  reason      String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  approvedBy  String?
+  approvedAt  DateTime?
+  rejectedReason String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+// ─── Overtime ───────────────────────────────────────────────────────────────
+
+model OvertimeApplication {
+  id         String   @id @default(uuid())
+  tenantId   String
+  employeeId String
+  date       DateTime @db.Date
+  requestedHours Decimal @db.Decimal(6, 2)
+  actualHours    Decimal? @db.Decimal(6, 2)
+  reason     String?
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  approvedBy String?
+  approvedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+// ─── Deductions & Loans ─────────────────────────────────────────────────────
+
+model Deduction {
+  id         String  @id @default(uuid())
+  tenantId   String
+  employeeId String
+  type       String  // SSS_LOAN, SSS_CALAMITY, PAGIBIG_LOAN, PAGIBIG_CALAMITY, CASH_ADVANCE, COMPANY_LOAN, OTHER
+  name       String?
+  amount     Decimal @db.Decimal(12, 2)
+  amountPerCutoff Decimal @default(0) @db.Decimal(12, 2)
+  balance    Decimal @default(0) @db.Decimal(12, 2)
+  isActive   Boolean @default(true)
+  startDate  DateTime? @db.Date
+  endDate    DateTime? @db.Date
+  remarks    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+model Loan {
+  id            String   @id @default(uuid())
+  tenantId      String
+  employeeId    String
+  type          String
+  principal     Decimal  @db.Decimal(12, 2)
+  interestRate  Decimal  @default(0) @db.Decimal(5, 4)
+  totalAmount   Decimal  @db.Decimal(12, 2)
+  monthlyAmortization Decimal @db.Decimal(12, 2)
+  balance       Decimal  @db.Decimal(12, 2)
+  status        String   @default("ACTIVE") // ACTIVE, PAID, CANCELLED
+  startDate     DateTime @db.Date
+  endDate       DateTime? @db.Date
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+// ─── Recruitment ────────────────────────────────────────────────────────────
+
+model JobPosting {
+  id          String   @id @default(uuid())
+  tenantId    String
+  title       String
+  description String?  @db.Text
+  departmentId String?
+  positionId  String?
+  jobType     String   @default("FULL_TIME") // FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP, TEMPORARY
+  experienceLevel String? // ENTRY, JUNIOR, MID, SENIOR, LEAD, MANAGER, EXECUTIVE
+  salaryMin   Decimal? @db.Decimal(12, 2)
+  salaryMax   Decimal? @db.Decimal(12, 2)
+  slots       Int      @default(1)
+  status      String   @default("DRAFT") // DRAFT, OPEN, CLOSED, ON_HOLD
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  applications Application[]
+
+  @@index([tenantId])
+}
+
+model Candidate {
+  id        String   @id @default(uuid())
+  tenantId  String
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  resume    String?
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  applications Application[]
+  interviews   Interview[]
+
+  @@index([tenantId])
+}
+
+model Application {
+  id           String   @id @default(uuid())
+  jobPostingId String
+  candidateId  String
+  status       String   @default("APPLIED") // APPLIED, SCREENING, SHORTLISTED, INTERVIEWED, OFFERED, HIRED, REJECTED
+  appliedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  jobPosting JobPosting @relation(fields: [jobPostingId], references: [id])
+  candidate  Candidate  @relation(fields: [candidateId], references: [id])
+
+  @@unique([jobPostingId, candidateId])
+}
+
+model Interview {
+  id          String   @id @default(uuid())
+  candidateId String
+  scheduledAt DateTime
+  type        String   @default("INITIAL") // INITIAL, TECHNICAL, FINAL, HR
+  interviewerId String?
+  notes       String?  @db.Text
+  result      String?  // PASSED, FAILED, PENDING
+  createdAt   DateTime @default(now())
+
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+model Notification {
+  id       String   @id @default(uuid())
+  tenantId String
+  userId   String
+  type     String
+  title    String
+  message  String
+  link     String?
+  isRead   Boolean  @default(false)
+  readAt   DateTime?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+model CompanySetting {
+  id        String  @id @default(uuid())
+  tenantId  String
+
+  // Payroll divisors
+  payrollDaysDivisor   Int     @default(26)
+  payrollHourlyDivisor Int     @default(8)
+
+  // Government registration
+  tinNumber            String?
+  sssEmployerNumber    String?
+  philhealthNumber     String?
+  pagibigNumber        String?
+  birRegistrationNumber String?
+  rdoCode              String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model GovernmentContributionSetting {
+  id       String  @id @default(uuid())
+  tenantId String
+
+  useActualEarnings      Boolean @default(false)
+  deductionFrequency     String  @default("PER_CUTOFF") // PER_CUTOFF, MONTHLY
+  monthlyDeductionCutoff String  @default("SECOND")     // FIRST, SECOND
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model AttendanceSetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  breakDurationMinutes        Int @default(60)
+  minimumHoursForBreak        Int @default(6)
+  nightDiffStartHour          Int @default(22)
+  nightDiffEndHour            Int @default(6)
+  lateGracePeriodMinutes      Int @default(0)
+  undertimeGracePeriodMinutes Int @default(0)
+  minimumOvertimeMinutes      Int @default(0)
+  timeRoundingInterval        Int @default(1)  // 1, 5, 15, or 30
+  roundingMethod              String @default("nearest") // up, down, nearest
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model PayrollPeriodSetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  name               String?
+  month              Int
+  year               Int
+  isBiMonthly        Boolean  @default(true)
+  firstPeriodStart   DateTime @db.Date
+  firstPeriodEnd     DateTime @db.Date
+  firstPayDate       DateTime @db.Date
+  secondPeriodStart  DateTime? @db.Date
+  secondPeriodEnd    DateTime? @db.Date
+  secondPayDate      DateTime? @db.Date
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model LeaveSetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  vacationLeaveAdvanceNoticeDays Int @default(3)
+  sickLeaveAdvanceNoticeDays     Int @default(0)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model LeaveCreditSetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  vacationLeavePerYear Int     @default(15)
+  sickLeavePerYear     Int     @default(15)
+  accrualMethod        String  @default("annual") // annual, monthly
+  allowCarryOver       Boolean @default(true)
+  maxCarryOverDays     Int     @default(0)
+  allowCashConversion  Boolean @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model OvertimeSetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  minimumOvertimeHours   Decimal @default(1) @db.Decimal(4, 2)
+  minimumOvertimeMinutes Int     @default(0)
+  mustNotBeLate          Boolean @default(true)
+  requireOvertimeFiling  Boolean @default(true)
+  maxLateFilingDays      Int     @default(30)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model HolidaySetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  beforeHolidayValue Int    @default(1)
+  beforeHolidayUnit  String @default("days") // hours, days
+  afterHolidayValue  Int    @default(1)
+  afterHolidayUnit   String @default("days")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model RateCalculationSetting {
+  id       String @id @default(uuid())
+  tenantId String
+
+  nightDiffMultiplier                          Decimal @default(0.10) @db.Decimal(5, 4)
+  overtimeMultiplier                           Decimal @default(1.25) @db.Decimal(5, 4)
+  overtimeNightDiffMultiplier                  Decimal @default(0.10) @db.Decimal(5, 4)
+  restdayOrSpecialHolidayMultiplier            Decimal @default(1.30) @db.Decimal(5, 4)
+  restdayOrSpecialHolidayNightDiffMultiplier   Decimal @default(0.10) @db.Decimal(5, 4)
+  restdayOrSpecialHolidayOvertimeMultiplier    Decimal @default(1.69) @db.Decimal(5, 4)
+  restdayOrSpecialHolidayOvertimeNDMultiplier  Decimal @default(0.10) @db.Decimal(5, 4)
+  legalHolidayMultiplier                       Decimal @default(2.00) @db.Decimal(5, 4)
+  legalHolidayNightDiffMultiplier              Decimal @default(0.10) @db.Decimal(5, 4)
+  legalHolidayOvertimeMultiplier               Decimal @default(2.50) @db.Decimal(5, 4)
+  legalHolidayOvertimeNDMultiplier             Decimal @default(0.10) @db.Decimal(5, 4)
+  legalOnSpecialHolidayMultiplier              Decimal @default(2.60) @db.Decimal(5, 4)
+  legalOnSpecialHolidayNightDiffMultiplier     Decimal @default(0.10) @db.Decimal(5, 4)
+  legalOnSpecialHolidayOvertimeMultiplier      Decimal @default(3.38) @db.Decimal(5, 4)
+  legalOnSpecialHolidayOvertimeNDMultiplier    Decimal @default(0.10) @db.Decimal(5, 4)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+}
+
+model TaxTable {
+  id       String @id @default(uuid())
+  tenantId String
+
+  name         String
+  year         Int
+  minIncome    Decimal  @db.Decimal(12, 2)
+  maxIncome    Decimal? @db.Decimal(12, 2)
+  baseTax      Decimal  @default(0) @db.Decimal(12, 2)
+  rate         Decimal  @db.Decimal(5, 4)
+  bracketOrder Int
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+  @@index([year])
+}
+
+// ─── Audit ──────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String   // CREATE, UPDATE, DELETE, STATUS_CHANGE, LOGIN, LOGOUT
+  entityType String
+  entityId   String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+}
