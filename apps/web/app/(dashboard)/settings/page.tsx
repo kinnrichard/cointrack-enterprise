@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Loader2, Building2, Landmark, Clock, CalendarOff, CalendarPlus, Timer, CalendarDays, Calculator, DollarSign, Receipt, Image, Pencil, Trash2, Plus } from 'lucide-react';
+import { Settings, Save, Loader2, Building2, Landmark, Clock, CalendarOff, CalendarPlus, Timer, CalendarDays, Calculator, DollarSign, Receipt, Image, Pencil, Trash2, Plus, Users } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ const TABS = [
   { id: 'holiday', label: 'Holiday', icon: CalendarDays },
   { id: 'payroll-periods', label: 'Payroll Periods', icon: DollarSign },
   { id: 'tax-table', label: 'Tax Table', icon: Receipt },
+  { id: 'employee-levels', label: 'Employee Levels', icon: Users },
   { id: 'adjustment-types', label: 'Adjustment Types', icon: Plus },
 ] as const;
 
@@ -74,6 +75,7 @@ export default function SettingsPage() {
 
   // CRUD queries for list-based settings
   const taxTables = useQuery({ queryKey: ['tax-tables'], queryFn: () => api.get('/settings/tax-tables').then(r => r.data) });
+  const employeeLevels = useQuery({ queryKey: ['employee-levels'], queryFn: () => api.get('/settings/employee-levels').then(r => r.data) });
   const adjustmentTypes = useQuery({ queryKey: ['adjustment-types'], queryFn: () => api.get('/settings/adjustment-types').then(r => r.data) });
   const payrollPeriods = useQuery({ queryKey: ['payroll-periods'], queryFn: () => api.get('/settings/payroll-periods').then(r => r.data) });
 
@@ -515,6 +517,41 @@ export default function SettingsPage() {
                           <td className="px-4 py-2 text-right">{t.maxIncome ? Number(t.maxIncome).toLocaleString() : '∞'}</td>
                           <td className="px-4 py-2 text-right">{Number(t.baseTax).toLocaleString()}</td>
                           <td className="px-4 py-2 text-right">{(Number(t.rate) * 100).toFixed(0)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ─── Employee Levels ─────────────────────────── */}
+          {activeTab === 'employee-levels' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold">Employee Levels</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Define your organization&apos;s hierarchy levels. Higher order = more senior. Used in the Employee form for &quot;Employee Level&quot; and &quot;Reports To&quot;.</p>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="rounded-lg border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead><tr className="bg-muted/50 border-b">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Order</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Level Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
+                    </tr></thead>
+                    <tbody>
+                      {(employeeLevels.data ?? []).length === 0 ? (
+                        <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                          No employee levels defined yet.
+                          <br /><span className="text-xs">Examples: Rank and File (0), Team Lead (1), Supervisor (2), Manager (3), Director (4)</span>
+                        </td></tr>
+                      ) : (employeeLevels.data ?? []).map((l: any) => (
+                        <tr key={l.id} className="border-b">
+                          <td className="px-4 py-2 font-mono text-muted-foreground">{l.order}</td>
+                          <td className="px-4 py-2 font-medium">{l.name}</td>
+                          <td className="px-4 py-2">{l.isActive ? 'Active' : 'Inactive'}</td>
                         </tr>
                       ))}
                     </tbody>

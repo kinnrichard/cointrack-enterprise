@@ -117,6 +117,27 @@ export class SettingsController {
     return this.settingsService.deletePayrollPeriod(req.user.tenantId, id);
   }
 
+  // Employee Levels
+  @Get('employee-levels')
+  getEmployeeLevels(@Req() req: any) {
+    return this.settingsService.getEmployeeLevels(req.user.tenantId);
+  }
+
+  @Post('employee-levels')
+  createEmployeeLevel(@Req() req: any, @Body() body: any) {
+    return this.settingsService.createEmployeeLevel(req.user.tenantId, body);
+  }
+
+  @Put('employee-levels/:id')
+  updateEmployeeLevel(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.settingsService.updateEmployeeLevel(req.user.tenantId, id, body);
+  }
+
+  @Delete('employee-levels/:id')
+  deleteEmployeeLevel(@Req() req: any, @Param('id') id: string) {
+    return this.settingsService.deleteEmployeeLevel(req.user.tenantId, id);
+  }
+
   // Adjustment Types
   @Get('adjustment-types')
   getAdjustmentTypes(@Req() req: any) {

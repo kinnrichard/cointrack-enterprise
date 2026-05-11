@@ -247,6 +247,35 @@ export class SettingsService {
     return { message: 'Payroll period deleted' };
   }
 
+  // ─── Employee Levels ───────────────────────────────────────────
+
+  async getEmployeeLevels(tenantId: string) {
+    return this.prisma.employeeLevel.findMany({ where: { tenantId }, orderBy: { order: 'asc' } });
+  }
+
+  async createEmployeeLevel(tenantId: string, data: any) {
+    return this.prisma.employeeLevel.create({
+      data: { tenantId, name: data.name, order: data.order ?? 0, isActive: data.isActive ?? true },
+    });
+  }
+
+  async updateEmployeeLevel(tenantId: string, id: string, data: any) {
+    const level = await this.prisma.employeeLevel.findFirst({ where: { id, tenantId } });
+    if (!level) throw new NotFoundException('Employee level not found');
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.order !== undefined) updateData.order = data.order;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    return this.prisma.employeeLevel.update({ where: { id }, data: updateData });
+  }
+
+  async deleteEmployeeLevel(tenantId: string, id: string) {
+    const level = await this.prisma.employeeLevel.findFirst({ where: { id, tenantId } });
+    if (!level) throw new NotFoundException('Employee level not found');
+    await this.prisma.employeeLevel.delete({ where: { id } });
+    return { message: 'Employee level deleted' };
+  }
+
   // ─── Adjustment Types ─────────────────────────────────────────
 
   async getAdjustmentTypes(tenantId: string) {

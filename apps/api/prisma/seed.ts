@@ -114,6 +114,26 @@ async function main() {
     },
   });
 
+  // Employee Levels
+  const levels = [
+    { name: 'Rank and File', order: 0 },
+    { name: 'Team Lead', order: 1 },
+    { name: 'Supervisor', order: 2 },
+    { name: 'Manager', order: 3 },
+    { name: 'Director', order: 4 },
+  ];
+
+  for (const level of levels) {
+    const existing = await prisma.employeeLevel.findUnique({
+      where: { tenantId_name: { tenantId: tenant.id, name: level.name } },
+    });
+    if (!existing) {
+      await prisma.employeeLevel.create({
+        data: { tenantId: tenant.id, ...level },
+      });
+    }
+  }
+
   // Leave Types
   const leaveTypes = [
     { code: 'VL', name: 'Vacation Leave', isPaid: true, maxDays: 15 },

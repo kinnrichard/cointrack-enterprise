@@ -57,6 +57,7 @@ model Tenant {
   holidaySettings                HolidaySetting[]
   rateCalculationSettings        RateCalculationSetting[]
   taxTables                      TaxTable[]
+  employeeLevels                 EmployeeLevel[]
 }
 
 // ─── Companies (Client Companies) ──────────────────────────────────────────
@@ -226,6 +227,24 @@ model Site {
   @@index([companyId])
 }
 
+// ─── Employee Levels (Customizable Hierarchy) ──────────────────────────────
+
+model EmployeeLevel {
+  id        String  @id @default(uuid())
+  tenantId  String
+  name      String                    // e.g., "Rank and File", "Team Lead", "Supervisor", "Manager", "Director"
+  order     Int     @default(0)       // hierarchy order (0=lowest, higher=more senior)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
 // ─── Employee ───────────────────────────────────────────────────────────────
 
 model Employee {
@@ -256,6 +275,8 @@ model Employee {
   siteId          String?
   scheduleId      String?
   rateId          String?
+  employeeLevelId String?
+  reportsToId     String?
   employmentType  String   @default("REGULAR") // REGULAR, PROBATIONARY, CONTRACTUAL, PART_TIME
   employmentStatus String  @default("ACTIVE")  // ACTIVE, RESIGNED, TERMINATED, SUSPENDED
   dateHired       DateTime?
@@ -292,14 +313,17 @@ model Employee {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  company      Company?     @relation(fields: [companyId], references: [id])
-  department   Department?  @relation(fields: [departmentId], references: [id])
-  position     Position?    @relation(fields: [positionId], references: [id])
-  site         Site?        @relation(fields: [siteId], references: [id])
-  schedule     Schedule?    @relation(fields: [scheduleId], references: [id])
-  rate         Rate?        @relation(fields: [rateId], references: [id])
-  user         User?
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  company       Company?       @relation(fields: [companyId], references: [id])
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  position      Position?      @relation(fields: [positionId], references: [id])
+  site          Site?          @relation(fields: [siteId], references: [id])
+  schedule      Schedule?      @relation(fields: [scheduleId], references: [id])
+  rate          Rate?          @relation(fields: [rateId], references: [id])
+  employeeLevel EmployeeLevel? @relation(fields: [employeeLevelId], references: [id])
+  reportsTo     Employee?      @relation("ReportsTo", fields: [reportsToId], references: [id])
+  directReports Employee[]     @relation("ReportsTo")
+  user          User?
   employeeSchedules EmployeeSchedule[]
   attendance        Attendance[]
   timekeepingData   TimekeepingData[]

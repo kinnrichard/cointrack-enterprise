@@ -55,6 +55,8 @@ interface Employee {
   siteId: string | null;
   scheduleId: string | null;
   rateId: string | null;
+  employeeLevelId: string | null;
+  reportsToId: string | null;
   employmentType: string;
   employmentStatus: string;
   dateHired: string | null;
@@ -83,6 +85,8 @@ interface Employee {
   site: { id: string; name: string } | null;
   schedule: { id: string; name: string } | null;
   rate: { id: string; name: string } | null;
+  employeeLevel: { id: string; name: string; order: number } | null;
+  reportsTo: { id: string; firstName: string; lastName: string } | null;
 }
 
 interface LookupItem { id: string; name: string }
@@ -113,6 +117,8 @@ const employeeSchema = z.object({
   scheduleId: z.string().optional().or(z.literal('')),
   rateId: z.string().optional().or(z.literal('')),
   employmentType: z.string().default('REGULAR'),
+  employeeLevelId: z.string().optional().or(z.literal('')),
+  reportsToId: z.string().optional().or(z.literal('')),
   employmentStatus: z.string().default('PROBATIONARY'),
   dateHired: z.string().optional().or(z.literal('')),
   dateRegularized: z.string().optional().or(z.literal('')),
@@ -147,7 +153,7 @@ const DEFAULTS: EmployeeFormData = {
   gender: '', birthDate: '', civilStatus: '', nationality: '',
   address: '', city: '', province: '', zipCode: '',
   phone: '', email: '', emergencyContact: '', emergencyPhone: '',
-  departmentId: '', positionId: '', siteId: '', scheduleId: '', rateId: '',
+  departmentId: '', positionId: '', siteId: '', scheduleId: '', rateId: '', employeeLevelId: '', reportsToId: '',
   employmentType: 'REGULAR', employmentStatus: 'PROBATIONARY',
   dateHired: format(new Date(), 'yyyy-MM-dd'), dateRegularized: '',
   basicSalary: '' as any, dailyRate: '' as any, hourlyRate: '' as any,
@@ -253,6 +259,7 @@ export default function EmployeesPage() {
   const sites = useQuery({ queryKey: ['sites-lookup'], queryFn: () => fetchLookup('sites') });
   const schedules = useQuery({ queryKey: ['schedules-lookup'], queryFn: () => fetchLookup('schedules') });
   const rates = useQuery({ queryKey: ['rates-lookup'], queryFn: () => fetchLookup('rates') });
+  const employeeLevels = useQuery({ queryKey: ['employee-levels'], queryFn: async () => (await api.get('/settings/employee-levels')).data as { id: string; name: string; order: number }[] });
 
   const employees = response?.data ?? [];
   const total = response?.total ?? 0;
@@ -337,6 +344,8 @@ export default function EmployeesPage() {
       siteId: emp.siteId || '',
       scheduleId: emp.scheduleId || '',
       rateId: emp.rateId || '',
+      employeeLevelId: emp.employeeLevelId || '',
+      reportsToId: emp.reportsToId || '',
       employmentType: emp.employmentType,
       employmentStatus: emp.employmentStatus,
       dateHired: emp.dateHired ? emp.dateHired.slice(0, 10) : '',
@@ -823,14 +832,26 @@ export default function EmployeesPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Employee Type <span className="text-red-500">*</span></Label>
-                      <Controller control={control} name="employmentType" render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                      <Label className="text-sm">Employee Level</Label>
+                      <Controller control={control} name="employeeLevelId" render={({ field }) => (
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="REGULAR">Rank and File</SelectItem>
-                            <SelectItem value="PROBATIONARY">Supervisor</SelectItem>
-                            <SelectItem value="CONTRACTUAL">Manager</SelectItem>
+                            {(employeeLevels.data ?? []).map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                      <p className="text-[11px] text-muted-foreground">Manage levels in Settings → Employee Levels</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Reports To</Label>
+                      <Controller control={control} name="reportsToId" render={({ field }) => (
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select supervisor/manager" /></SelectTrigger>
+                          <SelectContent>
+                            {(employees ?? []).filter((e: any) => !editing || e.id !== editing.id).map((e: any) => (
+                              <SelectItem key={e.id} value={e.id}>{e.lastName}, {e.firstName} {e.employeeLevel ? `(${e.employeeLevel.name})` : ''}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )} />
