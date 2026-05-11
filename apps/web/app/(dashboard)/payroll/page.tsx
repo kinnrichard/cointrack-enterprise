@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Banknote, Filter, X } from 'lucide-react';
+import { Banknote, Filter, X, Loader2, Play } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -31,13 +33,37 @@ const STATUS_CHIPS = [
 
 function fmt(v: number | string) { return Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+interface TimekeepingRecord {
+  id: string; name: string | null; startDate: string; endDate: string; status: string;
+  _count: { data: number };
+}
+
 export default function PayrollPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterEmployee, setFilterEmployee] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [selectedTK, setSelectedTK] = useState('');
+
+  const tkQuery = useQuery({
+    queryKey: ['timekeeping-completed'],
+    queryFn: async () => (await api.get('/timekeeping?status=COMPLETED&limit=20')).data.data as TimekeepingRecord[],
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: (tkId: string) => api.post(`/payroll/process/${tkId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payroll'] });
+      setGenerateOpen(false);
+      toast({ title: 'Payroll generated', description: 'Payroll records have been created for all employees.' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e?.response?.data?.message || 'Failed to generate payroll.', variant: 'destructive' }),
+  });
 
   const activeFilterCount = [filterEmployee, filterStartDate, filterEndDate].filter(Boolean).length;
   function clearFilters() { setFilterEmployee(''); setFilterStartDate(''); setFilterEndDate(''); setPage(1); }
@@ -84,7 +110,11 @@ export default function PayrollPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Payroll" description="Process and manage employee payroll" />
+      <PageHeader title="Payroll" description="Process and manage employee payroll">
+        <Button onClick={() => setGenerateOpen(true)} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+          <Play className="mr-2 h-4 w-4" /> Generate Payroll
+        </Button>
+      </PageHeader>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Records" value={total} icon={<Banknote className="h-5 w-5" />} />
         <StatCard title="Total Gross" value={`₱${fmt(totalGross)}`} icon={<Banknote className="h-5 w-5" />} />
@@ -129,6 +159,38 @@ export default function PayrollPage() {
           </div>
         }
       />
+
+      {/* Generate Payroll Dialog */}
+      <Dialog open={generateOpen} onOpenChange={(open) => !open && setGenerateOpen(false)}>
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col p-0 gap-0">
+          <div className="px-6 pt-5 pb-4 bg-muted/50 border-b rounded-t-2xl">
+            <DialogTitle className="text-xl font-semibold">Generate Payroll</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">Select a completed timekeeping period to generate payroll from.</DialogDescription>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            {(tkQuery.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No completed timekeeping periods found. Process a timekeeping period first.</p>
+            ) : (
+              <div className="space-y-2">
+                {(tkQuery.data ?? []).map((tk) => (
+                  <button key={tk.id} type="button" onClick={() => setSelectedTK(tk.id)}
+                    className={cn('w-full text-left p-3 rounded-lg border transition-colors', selectedTK === tk.id ? 'border-primary bg-primary/5' : 'hover:bg-accent')}>
+                    <p className="text-sm font-medium">{tk.name || `${format(new Date(tk.startDate), 'MMM d')} - ${format(new Date(tk.endDate), 'MMM d, yyyy')}`}</p>
+                    <p className="text-xs text-muted-foreground">{tk._count.data} employees</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="px-6 py-4 border-t border-border/50 flex items-center justify-between">
+            <button type="button" onClick={() => setGenerateOpen(false)} className="text-sm font-medium text-muted-foreground hover:text-red-500 transition-colors">Cancel</button>
+            <Button onClick={() => selectedTK && generateMutation.mutate(selectedTK)} disabled={!selectedTK || generateMutation.isPending}
+              className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90 rounded-lg">
+              {generateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Generate
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
