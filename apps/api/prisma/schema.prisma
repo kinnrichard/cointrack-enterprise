@@ -88,6 +88,7 @@ model Company {
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   employees Employee[]
+  sites     Site[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -208,18 +209,21 @@ model Position {
 }
 
 model Site {
-  id       String  @id @default(uuid())
-  tenantId String
-  name     String
-  code     String?
-  address  String?
-  isActive Boolean @default(true)
+  id        String  @id @default(uuid())
+  tenantId  String
+  companyId String?
+  name      String
+  code      String?
+  address   String?
+  isActive  Boolean @default(true)
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  company   Company?   @relation(fields: [companyId], references: [id])
   employees Employee[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+  @@index([companyId])
 }
 
 // ─── Employee ───────────────────────────────────────────────────────────────

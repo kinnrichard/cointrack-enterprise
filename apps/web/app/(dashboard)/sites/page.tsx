@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, Pencil, Trash2, Users, Loader2 } from 'lucide-react';
+import { MapPin, Pencil, Trash2, Users, Loader2, Filter, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -16,23 +16,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 
 interface Site {
-  id: string;
-  name: string;
-  code: string | null;
-  address: string | null;
-  isActive: boolean;
+  id: string; name: string; code: string | null; address: string | null;
+  companyId: string | null; isActive: boolean;
+  company: { id: string; name: string } | null;
   _count: { employees: number };
 }
+
+interface LookupItem { id: string; name: string }
 
 const schema = z.object({
   name: z.string().min(2, 'Name is required'),
   code: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
+  companyId: z.string().optional().or(z.literal('')),
   isActive: z.boolean().default(true),
 });
 
@@ -52,21 +55,32 @@ export default function SitesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterCompany, setFilterCompany] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Site | null>(null);
 
+  const activeFilterCount = [filterCompany].filter(Boolean).length;
+  function clearFilters() { setFilterCompany(''); setPage(1); }
+
   const { register, handleSubmit, reset, control, formState: { errors, isValid } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', code: '', address: '', isActive: true },
+    defaultValues: { name: '', code: '', address: '', companyId: '', isActive: true },
     mode: 'onChange',
   });
 
+  const companies = useQuery({
+    queryKey: ['companies-lookup'],
+    queryFn: async () => { const { data } = await api.get('/companies?limit=999'); return (data.data ?? data) as LookupItem[]; },
+  });
+
   const { data: response, isLoading } = useQuery({
-    queryKey: ['sites', page, search],
+    queryKey: ['sites', page, search, filterCompany],
     queryFn: async () => {
       const q = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       if (search) q.set('search', search);
+      if (filterCompany) q.set('companyId', filterCompany);
       return (await api.get(`/sites?${q}`)).data;
     },
   });
@@ -83,9 +97,9 @@ export default function SitesPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: FormData) => {
-      const payload: Record<string, any> = { ...data };
-      for (const key of Object.keys(payload)) if (payload[key] === '') payload[key] = null;
-      return api.post('/sites', payload);
+      const p: Record<string, any> = { ...data };
+      for (const k of Object.keys(p)) if (p[k] === '') p[k] = null;
+      return api.post('/sites', p);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sites'] }); closeModal(); toast({ title: 'Site created' }); },
     onError: () => toast({ title: 'Error', description: 'Failed to create site.', variant: 'destructive' }),
@@ -93,9 +107,9 @@ export default function SitesPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FormData }) => {
-      const payload: Record<string, any> = { ...data };
-      for (const key of Object.keys(payload)) if (payload[key] === '') payload[key] = null;
-      return api.put(`/sites/${id}`, payload);
+      const p: Record<string, any> = { ...data };
+      for (const k of Object.keys(p)) if (p[k] === '') p[k] = null;
+      return api.put(`/sites/${id}`, p);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sites'] }); closeModal(); toast({ title: 'Site updated' }); },
     onError: () => toast({ title: 'Error', description: 'Failed to update site.', variant: 'destructive' }),
@@ -108,15 +122,13 @@ export default function SitesPage() {
   });
 
   function openAdd() {
-    reset({ name: '', code: '', address: '', isActive: true });
-    setEditing(null);
-    setModalOpen(true);
+    reset({ name: '', code: '', address: '', companyId: '', isActive: true });
+    setEditing(null); setModalOpen(true);
   }
 
   function openEdit(site: Site) {
-    reset({ name: site.name, code: site.code || '', address: site.address || '', isActive: site.isActive });
-    setEditing(site);
-    setModalOpen(true);
+    reset({ name: site.name, code: site.code || '', address: site.address || '', companyId: site.companyId || '', isActive: site.isActive });
+    setEditing(site); setModalOpen(true);
   }
 
   function closeModal() { setModalOpen(false); setEditing(null); }
@@ -130,14 +142,10 @@ export default function SitesPage() {
 
   const columns: Column<Site>[] = [
     {
-      key: 'name',
-      label: 'Site / Branch',
-      sortable: true,
+      key: 'name', label: 'Site / Branch', sortable: true,
       render: (_: any, row: Site) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-600 text-white text-xs font-bold">
-            {row.name.slice(0, 2).toUpperCase()}
-          </div>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-600 text-white text-xs font-bold">{row.name.slice(0, 2).toUpperCase()}</div>
           <div className="min-w-0">
             <p className="font-medium text-foreground truncate">{row.name}</p>
             {row.code && <p className="text-xs text-muted-foreground">{row.code}</p>}
@@ -145,25 +153,16 @@ export default function SitesPage() {
         </div>
       ),
     },
+    { key: 'company.name', label: 'Company', sortable: true, render: (val: any) => val || <span className="text-muted-foreground">—</span> },
     { key: 'address', label: 'Address', render: (val: any) => val || '-' },
     { key: '_count.employees', label: 'Employees', sortable: true, render: (val: number) => val },
+    { key: 'isActive', label: 'Status', render: (val: boolean) => <StatusBadge status={val ? 'ACTIVE' : 'INACTIVE'} /> },
     {
-      key: 'isActive',
-      label: 'Status',
-      render: (val: boolean) => <StatusBadge status={val ? 'ACTIVE' : 'INACTIVE'} />,
-    },
-    {
-      key: 'actions',
-      label: '',
-      className: 'w-[80px]',
+      key: 'actions', label: '', className: 'w-[80px]',
       render: (_: any, row: Site) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={() => {}}>
-          <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+          <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
       ),
     },
@@ -181,19 +180,43 @@ export default function SitesPage() {
         <StatCard title="Total Employees" value={totalEmployees} icon={<Users className="h-5 w-5" />} />
       </div>
 
-      <DataTable<Site>
-        columns={columns} data={filtered} total={total} page={page} limit={PAGE_SIZE}
+      <DataTable<Site> columns={columns} data={filtered} total={total} page={page} limit={PAGE_SIZE}
         onPageChange={setPage} onSearch={(v) => { setSearch(v); setPage(1); }}
         searchPlaceholder="Search sites..." onRowClick={openEdit} isLoading={isLoading}
         emptyMessage="No sites found." emptyIcon={<MapPin className="h-12 w-12 text-muted-foreground/40 mb-3" />}
         toolbar={
-          <div className="flex items-center gap-1.5">
-            {STATUS_CHIPS.map((chip) => (
-              <button key={chip.id} onClick={() => { setStatusFilter(chip.id); setPage(1); }}
-                className={cn('shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
-                  statusFilter === chip.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent'
-                )}>{chip.label}</button>
-            ))}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="relative">
+                  <Filter className="h-3.5 w-3.5 mr-1.5" /> Filters
+                  {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{activeFilterCount}</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50"><p className="text-sm font-semibold">Filters</p>{activeFilterCount > 0 && <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"><X className="h-3 w-3" /> Clear</button>}</div>
+                <div className="p-4 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Company</Label>
+                    <Select value={filterCompany || 'ALL'} onValueChange={(v) => { setFilterCompany(v === 'ALL' ? '' : v); setPage(1); }}>
+                      <SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="All companies" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All companies</SelectItem>
+                        {(companies.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <div className="flex items-center gap-1.5">
+              {STATUS_CHIPS.map((chip) => (
+                <button key={chip.id} onClick={() => { setStatusFilter(chip.id); setPage(1); }}
+                  className={cn('shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+                    statusFilter === chip.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent'
+                  )}>{chip.label}</button>
+              ))}
+            </div>
           </div>
         }
       />
@@ -206,6 +229,18 @@ export default function SitesPage() {
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <form id="site-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Company</Label>
+                <Controller control={control} name="companyId" render={({ field }) => (
+                  <Select value={field.value || ''} onValueChange={(v) => field.onChange(v === 'NONE' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="No company (standalone site)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">No company (standalone)</SelectItem>
+                      {(companies.data ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-sm">Name <span className="text-red-500">*</span></Label>

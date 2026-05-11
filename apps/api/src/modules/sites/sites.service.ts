@@ -7,13 +7,15 @@ export class SitesService {
 
   async findAll(
     tenantId: string,
-    params: { page?: number; limit?: number; search?: string },
+    params: { page?: number; limit?: number; search?: string; companyId?: string },
   ) {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: any = { tenantId };
+
+    if (params.companyId) where.companyId = params.companyId;
 
     if (params.search) {
       where.OR = [
@@ -30,6 +32,7 @@ export class SitesService {
         take: limit,
         orderBy: { name: 'asc' },
         include: {
+          company: { select: { id: true, name: true } },
           _count: { select: { employees: true } },
         },
       }),
@@ -42,7 +45,10 @@ export class SitesService {
   async findOne(tenantId: string, id: string) {
     const site = await this.prisma.site.findFirst({
       where: { id, tenantId },
-      include: { _count: { select: { employees: true } } },
+      include: {
+        company: { select: { id: true, name: true } },
+        _count: { select: { employees: true } },
+      },
     });
     if (!site) throw new NotFoundException('Site not found');
     return site;
@@ -52,6 +58,7 @@ export class SitesService {
     return this.prisma.site.create({
       data: {
         tenantId,
+        companyId: data.companyId || null,
         name: data.name,
         code: data.code || null,
         address: data.address || null,
@@ -65,7 +72,7 @@ export class SitesService {
     if (!site) throw new NotFoundException('Site not found');
 
     const updateData: any = {};
-    const fields = ['name', 'code', 'address', 'isActive'];
+    const fields = ['name', 'code', 'address', 'companyId', 'isActive'];
     for (const field of fields) {
       if (data[field] !== undefined) updateData[field] = data[field];
     }

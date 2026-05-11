@@ -15,11 +15,13 @@ export class SitesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('companyId') companyId?: string,
   ) {
     return this.sitesService.findAll(req.user.tenantId, {
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,
       search,
+      companyId,
     });
   }
 
