@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { DollarSign, Pencil, Trash2, Users, Loader2 } from 'lucide-react';
+import { DollarSign, Pencil, Trash2, Users, Loader2, Filter, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -72,6 +73,8 @@ export default function RatesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterHasEmployees, setFilterHasEmployees] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Rate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Rate | null>(null);
@@ -93,7 +96,11 @@ export default function RatesPage() {
 
   const rates = (response?.data ?? []) as Rate[];
   const total = response?.total ?? 0;
-  const filtered = statusFilter === 'all' ? rates : statusFilter === 'active' ? rates.filter((r) => r.isActive) : rates.filter((r) => !r.isActive);
+  let filtered = statusFilter === 'all' ? rates : statusFilter === 'active' ? rates.filter((r) => r.isActive) : rates.filter((r) => !r.isActive);
+  if (filterHasEmployees === 'with') filtered = filtered.filter(r => r._count.employees > 0);
+  if (filterHasEmployees === 'without') filtered = filtered.filter(r => r._count.employees === 0);
+  const activeFilterCount = [filterHasEmployees !== 'all' ? filterHasEmployees : ''].filter(Boolean).length;
+  function clearFilters() { setFilterHasEmployees('all'); setPage(1); }
   const activeCount = rates.filter((r) => r.isActive).length;
   const totalEmployees = rates.reduce((sum, r) => sum + r._count.employees, 0);
 
@@ -198,12 +205,25 @@ export default function RatesPage() {
         searchPlaceholder="Search rates..." onRowClick={openEdit} isLoading={isLoading}
         emptyMessage="No rates found." emptyIcon={<DollarSign className="h-12 w-12 text-muted-foreground/40 mb-3" />}
         toolbar={
-          <div className="flex items-center gap-1.5">
-            {STATUS_CHIPS.map((chip) => (
-              <button key={chip.id} onClick={() => { setStatusFilter(chip.id); setPage(1); }}
-                className={cn('shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors', statusFilter === chip.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent')}
-              >{chip.label}</button>
-            ))}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+              <PopoverTrigger asChild><Button variant="outline" size="sm" className="relative"><Filter className="h-3.5 w-3.5 mr-1.5" /> Filters{activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{activeFilterCount}</span>}</Button></PopoverTrigger>
+              <PopoverContent className="w-[260px] p-0" align="start">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50"><p className="text-sm font-semibold">Filters</p>{activeFilterCount > 0 && <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"><X className="h-3 w-3" /> Clear</button>}</div>
+                <div className="p-4 space-y-4">
+                  <div className="space-y-1.5"><Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Employees</Label>
+                    <select value={filterHasEmployees} onChange={(e) => { setFilterHasEmployees(e.target.value); setPage(1); }} className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"><option value="all">All rates</option><option value="with">With employees</option><option value="without">Without employees</option></select>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <div className="flex items-center gap-1.5">
+              {STATUS_CHIPS.map((chip) => (
+                <button key={chip.id} onClick={() => { setStatusFilter(chip.id); setPage(1); }}
+                  className={cn('shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors', statusFilter === chip.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent')}
+                >{chip.label}</button>
+              ))}
+            </div>
           </div>
         }
       />

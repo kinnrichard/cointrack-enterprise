@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2, Pencil, Trash2, Users, FolderTree, Loader2 } from 'lucide-react';
+import { Building2, Pencil, Trash2, Users, FolderTree, Loader2, Filter, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -58,6 +59,8 @@ export default function DepartmentsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterParent, setFilterParent] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Department | null>(null);
@@ -80,9 +83,13 @@ export default function DepartmentsPage() {
   const departments = (response?.data ?? []) as Department[];
   const total = response?.total ?? 0;
 
-  const filtered = statusFilter === 'all' ? departments
+  let filtered = statusFilter === 'all' ? departments
     : statusFilter === 'active' ? departments.filter((d) => d.isActive)
     : departments.filter((d) => !d.isActive);
+  if (filterParent) filtered = filtered.filter((d) => d.parentId === filterParent);
+
+  const activeFilterCount = [filterParent].filter(Boolean).length;
+  function clearFilters() { setFilterParent(''); setPage(1); }
 
   const activeCount = departments.filter((d) => d.isActive).length;
   const totalEmployees = departments.reduce((sum, d) => sum + d._count.employees, 0);
@@ -195,13 +202,38 @@ export default function DepartmentsPage() {
         searchPlaceholder="Search departments..." onRowClick={openEdit} isLoading={isLoading}
         emptyMessage="No departments found." emptyIcon={<Building2 className="h-12 w-12 text-muted-foreground/40 mb-3" />}
         toolbar={
-          <div className="flex items-center gap-1.5">
-            {STATUS_CHIPS.map((chip) => (
-              <button key={chip.id} onClick={() => { setStatusFilter(chip.id); setPage(1); }}
-                className={cn('shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
-                  statusFilter === chip.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent'
-                )}>{chip.label}</button>
-            ))}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="relative">
+                  <Filter className="h-3.5 w-3.5 mr-1.5" /> Filters
+                  {activeFilterCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{activeFilterCount}</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0" align="start">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50"><p className="text-sm font-semibold">Filters</p>{activeFilterCount > 0 && <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"><X className="h-3 w-3" /> Clear</button>}</div>
+                <div className="p-4 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Parent Department</Label>
+                    <Select value={filterParent || 'ALL'} onValueChange={(v) => { setFilterParent(v === 'ALL' ? '' : v); setPage(1); }}>
+                      <SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="All" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All (no filter)</SelectItem>
+                        {departments.filter(d => d._count.children > 0).map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <div className="flex items-center gap-1.5">
+              {STATUS_CHIPS.map((chip) => (
+                <button key={chip.id} onClick={() => { setStatusFilter(chip.id); setPage(1); }}
+                  className={cn('shrink-0 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+                    statusFilter === chip.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-accent'
+                  )}>{chip.label}</button>
+              ))}
+            </div>
           </div>
         }
       />
