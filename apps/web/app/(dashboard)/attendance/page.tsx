@@ -249,7 +249,9 @@ export default function AttendancePage() {
                   )} />
                 </div>
                 <div className="space-y-1.5"><Label className="text-sm">Date <span className="text-red-500">*</span></Label>
-                  <Input type="date" {...register('date')} disabled={!!editing} className={cn(errors.date && 'border-red-300')} />
+                  <Controller control={control} name="date" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" disabled={!!editing} />
+                  )} />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

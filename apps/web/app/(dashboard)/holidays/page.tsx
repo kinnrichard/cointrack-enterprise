@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -212,7 +213,9 @@ export default function HolidaysPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-sm">Date <span className="text-red-500">*</span></Label>
-                  <Input type="date" {...register('date')} className={cn(errors.date && 'border-red-300 focus-visible:ring-red-200')} />
+                  <Controller control={control} name="date" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                  )} />
                   {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
                 </div>
                 <div className="space-y-1.5">

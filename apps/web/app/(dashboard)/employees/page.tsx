@@ -24,6 +24,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -683,7 +684,9 @@ export default function EmployeesPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Birth Date</Label>
-                      <Input type="date" {...register('birthDate')} />
+                      <Controller control={control} name="birthDate" render={({ field }) => (
+                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                      )} />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Civil Status</Label>
@@ -862,11 +865,15 @@ export default function EmployeesPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">Date Hired</Label>
-                      <Input type="date" {...register('dateHired')} />
+                      <Controller control={control} name="dateHired" render={({ field }) => (
+                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                      )} />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm">Date Regularized</Label>
-                      <Input type="date" {...register('dateRegularized')} />
+                      <Controller control={control} name="dateRegularized" render={({ field }) => (
+                        <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                      )} />
                     </div>
                   </div>
 

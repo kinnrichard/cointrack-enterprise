@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -203,11 +204,15 @@ export default function LeaveApplicationsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-sm">Start Date <span className="text-red-500">*</span></Label>
-                  <Input type="date" {...register('startDate')} className={cn(errors.startDate && 'border-red-300')} />
+                  <Controller control={control} name="startDate" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Start date" />
+                  )} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">End Date <span className="text-red-500">*</span></Label>
-                  <Input type="date" {...register('endDate')} className={cn(errors.endDate && 'border-red-300')} />
+                  <Controller control={control} name="endDate" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="End date" />
+                  )} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">Days <span className="text-red-500">*</span></Label>

@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -194,7 +195,11 @@ export default function LoansPage() {
                 <div className="space-y-1.5"><Label className="text-sm">Total Amount <span className="text-red-500">*</span></Label><Input type="number" step="0.01" {...register('totalAmount')} className={cn(errors.totalAmount && 'border-red-300')} /></div>
                 <div className="space-y-1.5"><Label className="text-sm">Monthly <span className="text-red-500">*</span></Label><Input type="number" step="0.01" {...register('monthlyAmortization')} className={cn(errors.monthlyAmortization && 'border-red-300')} /></div>
               </div>
-              <div className="space-y-1.5"><Label className="text-sm">Start Date <span className="text-red-500">*</span></Label><Input type="date" {...register('startDate')} className={cn(errors.startDate && 'border-red-300')} /></div>
+              <div className="space-y-1.5"><Label className="text-sm">Start Date <span className="text-red-500">*</span></Label>
+                <Controller control={control} name="startDate" render={({ field }) => (
+                  <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Select date" />
+                )} />
+              </div>
             </form>
           </div>
           <div className="px-6 py-4 border-t border-border/50 flex items-center justify-between">

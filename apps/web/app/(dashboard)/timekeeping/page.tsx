@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -56,7 +57,7 @@ export default function TimekeepingPage() {
   const activeFilterCount = [filterCutoff].filter(Boolean).length;
   function clearFilters() { setFilterCutoff(''); setPage(1); }
 
-  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<FormData>({
+  const { register, handleSubmit, reset, control, formState: { errors, isValid } } = useForm<FormData>({
     resolver: zodResolver(schema), defaultValues: { name: '', startDate: '', endDate: '', payDate: '', cutoffType: 'SEMI_MONTHLY' }, mode: 'onChange',
   });
 
@@ -174,11 +175,23 @@ export default function TimekeepingPage() {
             <form id="tk-form" onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="space-y-5">
               <div className="space-y-1.5"><Label className="text-sm">Period Name (optional)</Label><Input {...register('name')} placeholder="e.g., May 1-15, 2026" /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label className="text-sm">Start Date <span className="text-red-500">*</span></Label><Input type="date" {...register('startDate')} className={cn(errors.startDate && 'border-red-300')} /></div>
-                <div className="space-y-1.5"><Label className="text-sm">End Date <span className="text-red-500">*</span></Label><Input type="date" {...register('endDate')} className={cn(errors.endDate && 'border-red-300')} /></div>
+                <div className="space-y-1.5"><Label className="text-sm">Start Date <span className="text-red-500">*</span></Label>
+                  <Controller control={control} name="startDate" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Start date" />
+                  )} />
+                </div>
+                <div className="space-y-1.5"><Label className="text-sm">End Date <span className="text-red-500">*</span></Label>
+                  <Controller control={control} name="endDate" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="End date" />
+                  )} />
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label className="text-sm">Pay Date</Label><Input type="date" {...register('payDate')} /></div>
+                <div className="space-y-1.5"><Label className="text-sm">Pay Date</Label>
+                  <Controller control={control} name="payDate" render={({ field }) => (
+                    <DatePicker value={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Pay date" />
+                  )} />
+                </div>
                 <div className="space-y-1.5"><Label className="text-sm">Cutoff Type</Label>
                   <select {...register('cutoffType')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     <option value="SEMI_MONTHLY">Semi-Monthly</option><option value="MONTHLY">Monthly</option><option value="WEEKLY">Weekly</option>
