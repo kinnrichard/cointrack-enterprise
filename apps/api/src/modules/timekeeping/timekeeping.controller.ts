@@ -48,6 +48,11 @@ export class TimekeepingController {
     return this.timekeepingService.create(req.user.tenantId, body);
   }
 
+  @Post(':id/process')
+  process(@Req() req: any, @Param('id') id: string) {
+    return this.timekeepingService.process(req.user.tenantId, id);
+  }
+
   @Put(':id')
   update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
     return this.timekeepingService.update(req.user.tenantId, id, body);

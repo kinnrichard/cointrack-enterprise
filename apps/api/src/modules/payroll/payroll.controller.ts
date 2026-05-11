@@ -22,10 +22,7 @@ export class PayrollController {
     return this.payrollService.findAll(req.user.tenantId, {
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,
-      employeeId,
-      status,
-      startDate,
-      endDate,
+      employeeId, status, startDate, endDate,
     });
   }
 
@@ -34,9 +31,9 @@ export class PayrollController {
     return this.payrollService.findOne(req.user.tenantId, id);
   }
 
-  @Post()
-  create(@Req() req: any, @Body() body: any) {
-    return this.payrollService.create(req.user.tenantId, body);
+  @Post('process/:timekeepingId')
+  processFromTimekeeping(@Req() req: any, @Param('timekeepingId') timekeepingId: string) {
+    return this.payrollService.processFromTimekeeping(req.user.tenantId, timekeepingId);
   }
 
   @Put(':id')
