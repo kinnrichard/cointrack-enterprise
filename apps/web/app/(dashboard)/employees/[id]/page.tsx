@@ -146,7 +146,7 @@ export default function EmployeeDetailPage() {
               </div>
             </div>
             <div className="pt-16 shrink-0">
-              <Button size="sm" onClick={() => router.push(`/employees`)} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+              <Button size="sm" onClick={() => router.push(`/employees?edit=${emp.id}`)} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
                 <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
               </Button>
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -215,6 +215,7 @@ async function fetchLookup(endpoint: string) {
 
 export default function EmployeesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -425,6 +426,19 @@ export default function EmployeesPage() {
     setStatusFilter(status);
     setPage(1);
   }
+
+  // Auto-open edit modal from ?edit=ID query param (from detail page)
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && employees.length > 0) {
+      const emp = employees.find((e) => e.id === editId);
+      if (emp) {
+        openEdit(emp);
+        router.replace('/employees', { scroll: false });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, employees]);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
