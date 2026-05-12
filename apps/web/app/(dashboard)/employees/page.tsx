@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -213,6 +214,7 @@ async function fetchLookup(endpoint: string) {
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -230,7 +232,6 @@ export default function EmployeesPage() {
   const [selectedCompany, setSelectedCompany] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
 
   const activeFilterCount = [deptFilter, siteFilter, typeFilter !== 'all' ? typeFilter : ''].filter(Boolean).length;
 
@@ -496,7 +497,7 @@ export default function EmployeesPage() {
       className: 'w-[100px]',
       render: (_: any, row: Employee) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={() => {}}>
-          <button onClick={() => setViewingEmployee(row)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors" title="View">
+          <button onClick={() => router.push(`/employees/${row.id}`)} className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors" title="View">
             <Eye className="h-3.5 w-3.5" />
           </button>
           <button
@@ -545,7 +546,7 @@ export default function EmployeesPage() {
         onPageChange={setPage}
         onSearch={handleSearchChange}
         searchPlaceholder="Search by name, email, or employee number..."
-        onRowClick={(row) => setViewingEmployee(row)}
+        onRowClick={(row) => router.push(`/employees/${row.id}`)}
         isLoading={isLoading}
         emptyMessage="No employees found. Add your first employee to get started."
         emptyIcon={<Users className="h-12 w-12 text-muted-foreground/40 mb-3" />}
@@ -1055,118 +1056,6 @@ export default function EmployeesPage() {
               {editing ? 'Save Changes' : 'Create Employee'}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ─── Employee Detail View ─────────────────────────────────── */}
-      <Dialog open={!!viewingEmployee} onOpenChange={(open) => !open && setViewingEmployee(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
-          {viewingEmployee && (() => {
-            const emp = viewingEmployee;
-            const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
-            return (
-              <>
-                {/* Header */}
-                <div className="px-6 pt-5 pb-4 bg-muted/50 border-b rounded-t-2xl">
-                  <div className="flex items-start gap-4">
-                    {emp.photo ? (
-                      <img src={`${apiBase}${emp.photo}`} alt="" className="h-16 w-16 rounded-full object-cover border-2 border-background shadow" />
-                    ) : (
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-600 text-white text-xl font-bold shadow">
-                        {getInitials(emp.firstName, emp.lastName)}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <DialogTitle className="text-xl font-bold uppercase">
-                        {emp.lastName}, {emp.firstName} {emp.middleName || ''} {emp.suffix || ''}
-                      </DialogTitle>
-                      <p className="text-sm text-muted-foreground">{emp.position?.name || 'No Position'} — {emp.department?.name || 'No Department'}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <StatusBadge status={emp.employmentStatus} />
-                        <StatusBadge status={emp.employmentType} />
-                        {emp.employeeLevel && <StatusBadge status={emp.employeeLevel.name} variant="info" />}
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => { setViewingEmployee(null); openEdit(emp); }}>
-                      <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-                    </Button>
-                  </div>
-                  <DialogDescription className="sr-only">Employee details</DialogDescription>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-                  {/* Personal Information */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <DetailCard title="Personal Information" items={[
-                      { label: 'Employee Number', value: emp.employeeNumber },
-                      { label: 'Gender', value: emp.gender },
-                      { label: 'Date of Birth', value: emp.birthDate ? formatDate(emp.birthDate) : null },
-                      { label: 'Civil Status', value: emp.civilStatus },
-                      { label: 'Nationality', value: emp.nationality },
-                    ]} />
-                    <DetailCard title="Contact Information" items={[
-                      { label: 'Email', value: emp.email },
-                      { label: 'Phone', value: emp.phone },
-                      { label: 'Address', value: [emp.address, emp.city, emp.province].filter(Boolean).join(', ') || null },
-                    ]} />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <DetailCard title="Emergency Contact" items={[
-                      { label: 'Contact Person', value: emp.emergencyContact },
-                      { label: 'Contact Number', value: emp.emergencyPhone },
-                    ]} />
-                    <DetailCard title="Employment" items={[
-                      { label: 'Company', value: null },
-                      { label: 'Site', value: emp.site?.name },
-                      { label: 'Department', value: emp.department?.name },
-                      { label: 'Position', value: emp.position?.name },
-                      { label: 'Schedule', value: emp.schedule?.name },
-                      { label: 'Date Hired', value: emp.dateHired ? formatDate(emp.dateHired) : null },
-                      { label: 'Date Regularized', value: emp.dateRegularized ? formatDate(emp.dateRegularized) : null },
-                      { label: 'Reports To', value: emp.reportsTo ? `${emp.reportsTo.firstName} ${emp.reportsTo.lastName}` : null },
-                    ]} />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <DetailCard title="Compensation" items={[
-                      { label: 'Pay Type', value: emp.payType },
-                      { label: 'Basic Salary', value: Number(emp.basicSalary) ? `₱${Number(emp.basicSalary).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Daily Rate', value: Number(emp.dailyRate) ? `₱${Number(emp.dailyRate).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Hourly Rate', value: Number(emp.hourlyRate) ? `₱${Number(emp.hourlyRate).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Rate Table', value: emp.rate?.name },
-                    ]} />
-                    <DetailCard title="Government IDs" items={[
-                      { label: 'TIN', value: emp.tinNumber },
-                      { label: 'SSS', value: emp.sssNumber },
-                      { label: 'PhilHealth', value: emp.philhealthNumber },
-                      { label: 'Pag-IBIG', value: emp.pagibigNumber },
-                    ]} />
-                  </div>
-
-                  {(Number(emp.riceAllowance) > 0 || Number(emp.clothingAllowance) > 0 || Number(emp.laundryAllowance) > 0 || Number(emp.medicalAllowance) > 0 || Number(emp.transportationAllowance) > 0 || Number(emp.communicationAllowance) > 0 || Number(emp.otherAllowance) > 0) && (
-                    <DetailCard title="Allowances (Monthly)" items={[
-                      { label: 'Rice', value: Number(emp.riceAllowance) ? `₱${Number(emp.riceAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Clothing', value: Number(emp.clothingAllowance) ? `₱${Number(emp.clothingAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Laundry', value: Number(emp.laundryAllowance) ? `₱${Number(emp.laundryAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Medical', value: Number(emp.medicalAllowance) ? `₱${Number(emp.medicalAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Transportation', value: Number(emp.transportationAllowance) ? `₱${Number(emp.transportationAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Communication', value: Number(emp.communicationAllowance) ? `₱${Number(emp.communicationAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                      { label: 'Other', value: Number(emp.otherAllowance) ? `₱${Number(emp.otherAllowance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null },
-                    ]} />
-                  )}
-
-                  {emp.remarks && (
-                    <div className="rounded-lg border p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Remarks</p>
-                      <p className="text-sm">{emp.remarks}</p>
-                    </div>
-                  )}
-                </div>
-              </>
-            );
-          })()}
         </DialogContent>
       </Dialog>
 
