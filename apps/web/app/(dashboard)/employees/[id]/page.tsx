@@ -227,9 +227,20 @@ export default function EmployeeDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0">
-          {['profile', 'attendance', 'payroll', 'leaves', 'deductions'].map(t => (
-            <TabsTrigger key={t} value={t} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 capitalize">{t}</TabsTrigger>
+        <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 flex-wrap">
+          {[
+            { id: 'profile', label: 'Profile' },
+            { id: 'schedules', label: 'Schedule Assignments' },
+            { id: 'attendance', label: 'Attendances' },
+            { id: 'payroll', label: 'Payrolls' },
+            { id: 'timekeeping', label: 'Timekeepings' },
+            { id: 'leaves', label: 'Leaves' },
+            { id: 'overtime', label: 'Overtime' },
+            { id: 'deductions', label: 'Deductions' },
+            { id: 'documents', label: 'Documents (201)' },
+            { id: 'activity', label: 'Activity' },
+          ].map(t => (
+            <TabsTrigger key={t.id} value={t.id} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5">{t.label}</TabsTrigger>
           ))}
         </TabsList>
 
@@ -290,13 +301,59 @@ export default function EmployeeDetailPage() {
           )}
         </TabsContent>
 
-        {['attendance', 'payroll', 'leaves', 'deductions'].map(t => (
-          <TabsContent key={t} value={t} className="mt-5">
-            <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground capitalize">
-              {t} records for this employee will appear here
-            </div>
-          </TabsContent>
-        ))}
+        <TabsContent value="schedules" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Schedule assignment history for this employee
+          </div>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Attendance records — time in/out, hours worked, late, overtime
+          </div>
+        </TabsContent>
+
+        <TabsContent value="payroll" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Payroll history — earnings, deductions, net pay per cutoff
+          </div>
+        </TabsContent>
+
+        <TabsContent value="timekeeping" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Timekeeping summaries per cutoff period
+          </div>
+        </TabsContent>
+
+        <TabsContent value="leaves" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Leave applications and credit balances
+          </div>
+        </TabsContent>
+
+        <TabsContent value="overtime" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Overtime applications and approved hours
+          </div>
+        </TabsContent>
+
+        <TabsContent value="deductions" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Deductions and loan balances
+          </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            201 file — employee documents, contracts, certificates
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-5">
+          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+            Audit logs — all changes made to this employee record
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* ─── Quick Edit Modal ──────────────────────────────────────── */}
