@@ -260,6 +260,7 @@ export default function EmployeesPage() {
   const schedules = useQuery({ queryKey: ['schedules-lookup'], queryFn: () => fetchLookup('schedules') });
   const rates = useQuery({ queryKey: ['rates-lookup'], queryFn: () => fetchLookup('rates') });
   const employeeLevels = useQuery({ queryKey: ['employee-levels'], queryFn: async () => (await api.get('/settings/employee-levels')).data as { id: string; name: string; order: number }[] });
+  const approvalChains = useQuery({ queryKey: ['approval-chains'], queryFn: async () => (await api.get('/settings/approval-chains')).data as { id: string; employeeLevelId: string; approverLevelId: string; order: number; approverLevel: { id: string; name: string } }[] });
 
   const employees = response?.data ?? [];
   const total = response?.total ?? 0;
@@ -830,33 +831,80 @@ export default function EmployeesPage() {
                       )} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Employee Level</Label>
-                      <Controller control={control} name="employeeLevelId" render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
-                          <SelectContent>
-                            {(employeeLevels.data ?? []).map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                      <p className="text-[11px] text-muted-foreground">Manage levels in Settings → Employee Levels</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Reports To</Label>
-                      <Controller control={control} name="reportsToId" render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select supervisor/manager" /></SelectTrigger>
-                          <SelectContent>
-                            {(employees ?? []).filter((e: any) => !editing || e.id !== editing.id).map((e: any) => (
-                              <SelectItem key={e.id} value={e.id}>{e.lastName}, {e.firstName} {e.employeeLevel ? `(${e.employeeLevel.name})` : ''}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                    </div>
-                  </div>
+                  {(() => {
+                    const selectedLevelId = watch('employeeLevelId');
+                    const chainForLevel = (approvalChains.data ?? [])
+                      .filter(c => c.employeeLevelId === selectedLevelId)
+                      .sort((a, b) => a.order - b.order);
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-sm">Employee Level</Label>
+                            <Controller control={control} name="employeeLevelId" render={({ field }) => (
+                              <Select value={field.value || ''} onValueChange={(v) => { field.onChange(v); setValue('reportsToId', ''); }}>
+                                <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                                <SelectContent>
+                                  {(employeeLevels.data ?? []).map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            )} />
+                            <p className="text-[11px] text-muted-foreground">Manage levels in Settings → Employee Levels</p>
+                          </div>
+                        </div>
+
+                        {chainForLevel.length > 0 && (
+                          <>
+                            <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Approvers</p></div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {chainForLevel.map((chain, idx) => {
+                                const approverEmployees = (employees ?? []).filter((e: any) =>
+                                  e.employeeLevelId === chain.approverLevelId && (!editing || e.id !== editing.id)
+                                );
+                                return (
+                                  <div key={chain.id} className="space-y-1.5">
+                                    <Label className="text-sm">
+                                      {chain.order === 1 ? '1st' : chain.order === 2 ? '2nd' : `${chain.order}th`} Approver — {chain.approverLevel.name} <span className="text-red-500">*</span>
+                                    </Label>
+                                    {idx === 0 ? (
+                                      <Controller control={control} name="reportsToId" render={({ field }) => (
+                                        <Select value={field.value || ''} onValueChange={field.onChange}>
+                                          <SelectTrigger><SelectValue placeholder={`Select ${chain.approverLevel.name.toLowerCase()}`} /></SelectTrigger>
+                                          <SelectContent>
+                                            {approverEmployees.length === 0 ? (
+                                              <SelectItem value="__none" disabled>No {chain.approverLevel.name} employees found</SelectItem>
+                                            ) : approverEmployees.map((e: any) => (
+                                              <SelectItem key={e.id} value={e.id}>{e.lastName}, {e.firstName}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      )} />
+                                    ) : (
+                                      <Select>
+                                        <SelectTrigger><SelectValue placeholder={`Select ${chain.approverLevel.name.toLowerCase()}`} /></SelectTrigger>
+                                        <SelectContent>
+                                          {approverEmployees.length === 0 ? (
+                                            <SelectItem value="__none" disabled>No {chain.approverLevel.name} employees found</SelectItem>
+                                          ) : approverEmployees.map((e: any) => (
+                                            <SelectItem key={e.id} value={e.id}>{e.lastName}, {e.firstName}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+
+                        {selectedLevelId && chainForLevel.length === 0 && (
+                          <p className="text-xs text-muted-foreground">No approval chain configured for this level. Set it up in Settings → Approval Chain.</p>
+                        )}
+                      </>
+                    );
+                  })()}
                   <div className="space-y-1.5"><Label className="text-sm">Remarks</Label><Textarea {...register('remarks')} placeholder="Additional notes..." className="min-h-[60px]" /></div>
                 </>
               )}
