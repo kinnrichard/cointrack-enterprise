@@ -954,14 +954,6 @@ export default function EmployeesPage() {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label className="text-sm">Pay Frequency</Label>
-                      <Controller control={control} name="payFrequency" render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="MONTHLY">Monthly</SelectItem><SelectItem value="SEMI_MONTHLY">Semi-Monthly</SelectItem><SelectItem value="WEEKLY">Weekly</SelectItem></SelectContent>
-                        </Select>
-                      )} />
-                    </div>
                     {payTypeValue === 'DAILY' && (
                       <div className="space-y-1.5"><Label className="text-sm">Daily Rate</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('dailyRate')} className="pl-7" placeholder="610" /></div></div>
                     )}
