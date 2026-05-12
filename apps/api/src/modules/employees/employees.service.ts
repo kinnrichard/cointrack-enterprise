@@ -114,6 +114,9 @@ export class EmployeesService {
         riceAllowance: data.riceAllowance || 0,
         clothingAllowance: data.clothingAllowance || 0,
         laundryAllowance: data.laundryAllowance || 0,
+        medicalAllowance: data.medicalAllowance || 0,
+        transportationAllowance: data.transportationAllowance || 0,
+        communicationAllowance: data.communicationAllowance || 0,
         otherAllowance: data.otherAllowance || 0,
         sssNumber: data.sssNumber || null,
         philhealthNumber: data.philhealthNumber || null,
@@ -153,7 +156,8 @@ export class EmployeesService {
 
     const numericFields = [
       'basicSalary', 'dailyRate', 'hourlyRate',
-      'riceAllowance', 'clothingAllowance', 'laundryAllowance', 'otherAllowance',
+      'riceAllowance', 'clothingAllowance', 'laundryAllowance',
+      'medicalAllowance', 'transportationAllowance', 'communicationAllowance', 'otherAllowance',
     ];
     for (const field of numericFields) {
       if (data[field] !== undefined) updateData[field] = data[field];

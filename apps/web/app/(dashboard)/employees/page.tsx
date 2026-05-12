@@ -70,6 +70,9 @@ interface Employee {
   riceAllowance: number;
   clothingAllowance: number;
   laundryAllowance: number;
+  medicalAllowance: number;
+  transportationAllowance: number;
+  communicationAllowance: number;
   otherAllowance: number;
   sssNumber: string | null;
   philhealthNumber: string | null;
@@ -130,6 +133,9 @@ const employeeSchema = z.object({
   riceAllowance: z.coerce.number().min(0).default(0),
   clothingAllowance: z.coerce.number().min(0).default(0),
   laundryAllowance: z.coerce.number().min(0).default(0),
+  medicalAllowance: z.coerce.number().min(0).default(0),
+  transportationAllowance: z.coerce.number().min(0).default(0),
+  communicationAllowance: z.coerce.number().min(0).default(0),
   otherAllowance: z.coerce.number().min(0).default(0),
   sssNumber: z.string().optional().or(z.literal('')),
   philhealthNumber: z.string().optional().or(z.literal('')),
@@ -158,7 +164,8 @@ const DEFAULTS: EmployeeFormData = {
   dateHired: format(new Date(), 'yyyy-MM-dd'), dateRegularized: '',
   basicSalary: '' as any, dailyRate: '' as any, hourlyRate: '' as any,
   payType: 'MONTHLY', payFrequency: 'SEMI_MONTHLY',
-  riceAllowance: '' as any, clothingAllowance: '' as any, laundryAllowance: '' as any, otherAllowance: '' as any,
+  riceAllowance: '' as any, clothingAllowance: '' as any, laundryAllowance: '' as any,
+  medicalAllowance: '' as any, transportationAllowance: '' as any, communicationAllowance: '' as any, otherAllowance: '' as any,
   sssNumber: '', philhealthNumber: '', pagibigNumber: '', tinNumber: '',
   sssExempt: false, philhealthExempt: false, pagibigExempt: false, taxExempt: false,
   remarks: '',
@@ -359,6 +366,9 @@ export default function EmployeesPage() {
       riceAllowance: Number(emp.riceAllowance) || 0,
       clothingAllowance: Number(emp.clothingAllowance) || 0,
       laundryAllowance: Number(emp.laundryAllowance) || 0,
+      medicalAllowance: Number(emp.medicalAllowance) || 0,
+      transportationAllowance: Number(emp.transportationAllowance) || 0,
+      communicationAllowance: Number(emp.communicationAllowance) || 0,
       otherAllowance: Number(emp.otherAllowance) || 0,
       sssNumber: emp.sssNumber || '',
       philhealthNumber: emp.philhealthNumber || '',
@@ -971,6 +981,11 @@ export default function EmployeesPage() {
                     <div className="space-y-1.5"><Label className="text-sm">Rice Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('riceAllowance')} className="pl-7" placeholder="1500" /></div></div>
                     <div className="space-y-1.5"><Label className="text-sm">Clothing Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('clothingAllowance')} className="pl-7" placeholder="500" /></div></div>
                     <div className="space-y-1.5"><Label className="text-sm">Laundry Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('laundryAllowance')} className="pl-7" placeholder="300" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Medical Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('medicalAllowance')} className="pl-7" placeholder="1000" /></div></div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="space-y-1.5"><Label className="text-sm">Transportation</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('transportationAllowance')} className="pl-7" placeholder="2000" /></div></div>
+                    <div className="space-y-1.5"><Label className="text-sm">Communication</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('communicationAllowance')} className="pl-7" placeholder="800" /></div></div>
                     <div className="space-y-1.5"><Label className="text-sm">Other Allowance</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₱</span><Input type="number" step="0.01" {...register('otherAllowance')} className="pl-7" placeholder="500" /></div></div>
                   </div>
                 </>

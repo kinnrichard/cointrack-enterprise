@@ -309,10 +309,13 @@ model Employee {
   payFrequency    String   @default("SEMI_MONTHLY") // MONTHLY, SEMI_MONTHLY, WEEKLY
 
   // Allowances
-  riceAllowance     Decimal @default(0) @db.Decimal(12, 2)
-  clothingAllowance Decimal @default(0) @db.Decimal(12, 2)
-  laundryAllowance  Decimal @default(0) @db.Decimal(12, 2)
-  otherAllowance    Decimal @default(0) @db.Decimal(12, 2)
+  riceAllowance           Decimal @default(0) @db.Decimal(12, 2)
+  clothingAllowance       Decimal @default(0) @db.Decimal(12, 2)
+  laundryAllowance        Decimal @default(0) @db.Decimal(12, 2)
+  medicalAllowance        Decimal @default(0) @db.Decimal(12, 2)
+  transportationAllowance Decimal @default(0) @db.Decimal(12, 2)
+  communicationAllowance  Decimal @default(0) @db.Decimal(12, 2)
+  otherAllowance          Decimal @default(0) @db.Decimal(12, 2)
 
   // Government IDs
   sssNumber       String?
@@ -625,10 +628,13 @@ model Payroll {
   doubleHolidayOTPay  Decimal @default(0) @db.Decimal(12, 2)
 
   // Allowances
-  riceAllowance     Decimal @default(0) @db.Decimal(12, 2)
-  clothingAllowance Decimal @default(0) @db.Decimal(12, 2)
-  laundryAllowance  Decimal @default(0) @db.Decimal(12, 2)
-  otherAllowance    Decimal @default(0) @db.Decimal(12, 2)
+  riceAllowance           Decimal @default(0) @db.Decimal(12, 2)
+  clothingAllowance       Decimal @default(0) @db.Decimal(12, 2)
+  laundryAllowance        Decimal @default(0) @db.Decimal(12, 2)
+  medicalAllowance        Decimal @default(0) @db.Decimal(12, 2)
+  transportationAllowance Decimal @default(0) @db.Decimal(12, 2)
+  communicationAllowance  Decimal @default(0) @db.Decimal(12, 2)
+  otherAllowance          Decimal @default(0) @db.Decimal(12, 2)
 
   // Deductions
   lateDeduction      Decimal @default(0) @db.Decimal(12, 2)
