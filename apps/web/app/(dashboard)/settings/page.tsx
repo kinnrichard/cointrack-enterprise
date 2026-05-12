@@ -793,7 +793,7 @@ function ApprovalChainTab({ levels, chains, queryClient, toast }: {
                       <Select value={newApproverLevel} onValueChange={setNewApproverLevel}>
                         <SelectTrigger className="h-9 w-[200px]"><SelectValue placeholder="Select approver level" /></SelectTrigger>
                         <SelectContent>
-                          {levels.filter((l: any) => l.id !== level.id && !levelChains.some((c: any) => c.approverLevelId === l.id)).map((l: any) => (
+                          {levels.filter((l: any) => l.id !== level.id && l.order > level.order && !levelChains.some((c: any) => c.approverLevelId === l.id)).map((l: any) => (
                             <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                           ))}
                         </SelectContent>
