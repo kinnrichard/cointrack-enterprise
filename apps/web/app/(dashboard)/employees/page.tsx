@@ -797,15 +797,6 @@ export default function EmployeesPage() {
                         </Select>
                       )} />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Rate Table</Label>
-                      <Controller control={control} name="rateId" render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger><SelectValue placeholder="Select rate" /></SelectTrigger>
-                          <SelectContent>{(rates.data ?? []).map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      )} />
-                    </div>
                   </div>
 
                   <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Employment Details</p></div>
