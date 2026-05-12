@@ -603,6 +603,7 @@ function DocumentsTab({ employeeId }: { employeeId: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [category, setCategory] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -620,6 +621,7 @@ function DocumentsTab({ employeeId }: { employeeId: string }) {
   });
 
   async function handleUpload(file: File) {
+    if (file.size > 10 * 1024 * 1024) { toast({ title: 'File too large', description: 'Max 10MB', variant: 'destructive' }); return; }
     setUploading(true);
     try {
       const formData = new FormData();
@@ -635,62 +637,68 @@ function DocumentsTab({ employeeId }: { employeeId: string }) {
 
   return (
     <div className="space-y-5">
-      {/* Upload Zone */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Category (optional)" /></SelectTrigger>
-            <SelectContent>{DOC_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <label className={cn(
-          'inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors',
-          uploading ? 'opacity-50 cursor-wait' : 'hover:border-primary hover:bg-accent/50'
-        )}>
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
-          <span className="text-sm font-medium">{uploading ? 'Uploading...' : 'Upload Document'}</span>
-          <input type="file" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }} />
-        </label>
+      {/* Category Filter */}
+      <div className="flex items-center gap-3">
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Category (optional)" /></SelectTrigger>
+          <SelectContent>{DOC_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+        </Select>
+        {category && <button onClick={() => setCategory('')} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}
       </div>
-      <p className="text-xs text-muted-foreground">Max 10MB per file. Supports PDF, DOC, XLS, images, and other formats.</p>
 
-      {/* Document List */}
-      <div className="rounded-lg border overflow-hidden">
-        {isLoading ? (
-          <div className="px-4 py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></div>
-        ) : (docs ?? []).length === 0 ? (
-          <div className="px-4 py-12 text-center">
-            <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {(docs ?? []).map((doc) => {
-              const icon = getFileIcon(doc.mimeType);
-              return (
-                <div key={doc.id} className="flex items-center gap-4 px-4 py-3 hover:bg-accent/20 transition-colors group">
-                  <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold', icon.color)}>
-                    {icon.label}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {doc.category && <span className="bg-muted px-1.5 py-0.5 rounded">{doc.category}</span>}
-                      <span>{formatFileSize(doc.fileSize)}</span>
-                      <span>{format(new Date(doc.createdAt), 'MMM d, yyyy')}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <a href={`${apiBase}${doc.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"><Eye className="h-3.5 w-3.5" /></a>
-                    <a href={`${apiBase}${doc.fileUrl}`} download={doc.fileName} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Download className="h-3.5 w-3.5" /></a>
-                    <button onClick={() => setDeleting(doc.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Upload Drop Zone (procunexpro style) */}
+      <label
+        className={cn(
+          'flex items-center justify-center gap-3 px-6 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-all',
+          dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-accent/30',
+          uploading && 'opacity-50 cursor-not-allowed pointer-events-none'
         )}
-      </div>
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) handleUpload(f); }}
+      >
+        {uploading ? <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" /> : <Upload className="h-5 w-5 text-muted-foreground/40" />}
+        <div>
+          <p className="text-sm text-muted-foreground font-medium">{uploading ? 'Uploading...' : 'Click or drag file to upload'}</p>
+          <p className="text-[10px] text-muted-foreground/60">PDF, Word, Excel, Images, and other formats. Max 10MB.</p>
+        </div>
+        <input type="file" className="sr-only" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }} />
+      </label>
+
+      {/* Document List (procunexpro style) */}
+      {isLoading ? (
+        <div className="py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></div>
+      ) : (docs ?? []).length === 0 ? (
+        <div className="py-12 text-center">
+          <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {(docs ?? []).map((doc) => {
+            const icon = getFileIcon(doc.mimeType);
+            return (
+              <div key={doc.id} className="group flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/30 transition-colors">
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold', icon.color)}>
+                  {icon.label}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{doc.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {doc.category && <span className="bg-muted px-1.5 py-0.5 rounded mr-2">{doc.category}</span>}
+                    {formatFileSize(doc.fileSize)} · {format(new Date(doc.createdAt), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <a href={`${apiBase}${doc.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent" title="View"><Eye className="h-3.5 w-3.5" /></a>
+                  <a href={`${apiBase}${doc.fileUrl}`} download={doc.fileName} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent" title="Download"><Download className="h-3.5 w-3.5" /></a>
+                  <button onClick={() => setDeleting(doc.id)} className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {deleting && (
         <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
