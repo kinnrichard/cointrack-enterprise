@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Loader2, Building2, Landmark, Clock, CalendarOff, CalendarPlus, Timer, CalendarDays, Calculator, DollarSign, Receipt, Image, Pencil, Trash2, Plus, Users } from 'lucide-react';
+import { Settings, Save, Loader2, Building2, Landmark, Clock, CalendarOff, CalendarPlus, Timer, CalendarDays, Calculator, DollarSign, Receipt, ImageIcon, Pencil, Trash2, Plus, Users, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ const TABS = [
   { id: 'tax-table', label: 'Tax', icon: Receipt },
   { id: 'employee-levels', label: 'Employee Levels', icon: Users },
   { id: 'approval-chains', label: 'Approval Chain', icon: Users },
+  { id: 'logo', label: 'Logo', icon: ImageIcon },
   { id: 'adjustment-types', label: 'Adjustment Types', icon: Plus },
 ] as const;
 
@@ -371,6 +372,11 @@ export default function SettingsPage() {
             />
           )}
 
+          {/* ─── Logo Upload ────────────────────────────── */}
+          {activeTab === 'logo' && (
+            <LogoSettingsTab />
+          )}
+
           {/* ─── Adjustment Types ─────────────────────────── */}
           {activeTab === 'adjustment-types' && (
             <Card>
@@ -405,6 +411,111 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LogoSettingsTab() {
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, type: 'icon' | 'banner') {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { alert('File must be under 2MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      if (type === 'icon') setIconPreview(result);
+      else setBannerPreview(result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-semibold">Logo Settings</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">Upload logos for reports, payslips, and printed documents. PNG with transparent background recommended.</p>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-6">
+        {/* Icon Logo */}
+        <div className="rounded-lg border p-5">
+          <div className="flex items-start gap-6">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border-2 border-dashed bg-muted/30">
+              {iconPreview ? (
+                <img src={iconPreview} alt="Icon" className="h-16 w-16 object-contain" />
+              ) : (
+                <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-semibold">Icon Logo</p>
+              <p className="text-xs text-muted-foreground">Used in browser tab (favicon) and collapsed sidebar. Recommended: 64×64px, PNG with transparent background.</p>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer hover:bg-accent transition-colors">
+                  <Upload className="h-3.5 w-3.5" /> Upload
+                  <input type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={(e) => handleFileChange(e, 'icon')} />
+                </label>
+                {iconPreview && (
+                  <button onClick={() => setIconPreview(null)} className="text-xs text-muted-foreground hover:text-red-500">Remove</button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Max file size: 2MB</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Banner Logo */}
+        <div className="rounded-lg border p-5">
+          <div className="flex items-start gap-6">
+            <div className="flex h-20 w-48 shrink-0 items-center justify-center rounded-lg border-2 border-dashed bg-muted/30">
+              {bannerPreview ? (
+                <img src={bannerPreview} alt="Banner" className="h-16 w-44 object-contain" />
+              ) : (
+                <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-semibold">Banner Logo</p>
+              <p className="text-xs text-muted-foreground">Used in login page, expanded sidebar, reports, payslips, and printed documents. Recommended: 300×80px, PNG with transparent background.</p>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer hover:bg-accent transition-colors">
+                  <Upload className="h-3.5 w-3.5" /> Upload
+                  <input type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={(e) => handleFileChange(e, 'banner')} />
+                </label>
+                {bannerPreview && (
+                  <button onClick={() => setBannerPreview(null)} className="text-xs text-muted-foreground hover:text-red-500">Remove</button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Max file size: 2MB</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview */}
+        {(iconPreview || bannerPreview) && (
+          <div className="rounded-lg border p-5 bg-muted/30">
+            <p className="text-sm font-semibold mb-3">Preview</p>
+            <div className="flex items-center gap-6">
+              {iconPreview && (
+                <div className="text-center">
+                  <img src={iconPreview} alt="Icon preview" className="h-10 w-10 object-contain mx-auto mb-1" />
+                  <p className="text-[10px] text-muted-foreground">Icon</p>
+                </div>
+              )}
+              {bannerPreview && (
+                <div className="text-center">
+                  <img src={bannerPreview} alt="Banner preview" className="h-10 object-contain mx-auto mb-1" />
+                  <p className="text-[10px] text-muted-foreground">Banner</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground">Note: Logo upload to server will be available in a future update. Currently previewing locally.</p>
+      </CardContent>
+    </Card>
   );
 }
 
