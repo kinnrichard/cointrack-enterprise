@@ -15,16 +15,16 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 
 const TABS = [
-  { id: 'company', label: 'Company', icon: Building2 },
-  { id: 'rate-calculation', label: 'Rate Multipliers', icon: Calculator },
-  { id: 'gov-contributions', label: 'Gov Contributions', icon: Landmark },
+  { id: 'company', label: 'Tenant Info', icon: Building2 },
   { id: 'attendance', label: 'Attendance', icon: Clock },
-  { id: 'leave', label: 'Leave', icon: CalendarOff },
+  { id: 'leave', label: 'Leaves', icon: CalendarOff },
   { id: 'leave-credits', label: 'Leave Credits', icon: CalendarPlus },
-  { id: 'overtime', label: 'Overtime', icon: Timer },
   { id: 'holiday', label: 'Holiday', icon: CalendarDays },
-  { id: 'payroll-periods', label: 'Payroll Periods', icon: DollarSign },
-  { id: 'tax-table', label: 'Tax Table', icon: Receipt },
+  { id: 'overtime', label: 'Overtime', icon: Timer },
+  { id: 'payroll-periods', label: 'Timekeeping', icon: Clock },
+  { id: 'rate-calculation', label: 'Rate', icon: Calculator },
+  { id: 'gov-contributions', label: 'Government', icon: Landmark },
+  { id: 'tax-table', label: 'Tax', icon: Receipt },
   { id: 'employee-levels', label: 'Employee Levels', icon: Users },
   { id: 'approval-chains', label: 'Approval Chain', icon: Users },
   { id: 'adjustment-types', label: 'Adjustment Types', icon: Plus },
