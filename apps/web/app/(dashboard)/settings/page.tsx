@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 
 const TABS = [
-  { id: 'company', label: 'Tenant Info', icon: Building2 },
+  { id: 'general', label: 'General', icon: Settings },
   { id: 'attendance', label: 'Attendance', icon: Clock },
   { id: 'leave', label: 'Leaves', icon: CalendarOff },
   { id: 'holiday', label: 'Holiday', icon: CalendarDays },
@@ -28,6 +28,7 @@ const TABS = [
   { id: 'employee-levels', label: 'Employee Levels', icon: Users },
   { id: 'approval-chains', label: 'Approval Chain', icon: Users },
   { id: 'logo', label: 'Logo', icon: ImageIcon },
+  { id: 'company', label: 'About', icon: Building2 },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -45,7 +46,7 @@ function SettingsField({ label, children, hint }: { label: string; children: Rea
 export default function SettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabId>('company');
+  const [activeTab, setActiveTab] = useState<TabId>('general');
 
   // Fetch all settings
   const { data: settings, isLoading } = useQuery({
@@ -122,6 +123,12 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* ─── Company Settings ──────────────────────────── */}
+          {/* ─── General ────────────────────────────────── */}
+          {activeTab === 'general' && (
+            <GeneralSettingsTab />
+          )}
+
+          {/* ─── About ──────────────────────────────────── */}
           {activeTab === 'company' && (
             <TenantInfoTab />
           )}
@@ -997,6 +1004,61 @@ function LeavesSettingsTab({ settings: s, saveLeave, saveLeaveCredit }: { settin
   );
 }
 
+function GeneralSettingsTab() {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-semibold">General Settings</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">Company information and general system preferences.</p>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-5">
+        <p className="text-sm font-medium text-muted-foreground">Company Information</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SettingsField label="Company Name"><Input defaultValue="" placeholder="Your company name" /></SettingsField>
+          <SettingsField label="Company Code"><Input defaultValue="" placeholder="e.g., ACME" disabled /></SettingsField>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SettingsField label="Email"><Input defaultValue="" placeholder="company@email.com" /></SettingsField>
+          <SettingsField label="Phone"><Input defaultValue="" placeholder="+63 XXX XXX XXXX" /></SettingsField>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm">Address</Label>
+          <Input defaultValue="" placeholder="Company address" />
+        </div>
+
+        <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Government Registration</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SettingsField label="TIN Number"><Input defaultValue="" placeholder="123-456-789-000" /></SettingsField>
+          <SettingsField label="SSS Employer Number"><Input defaultValue="" placeholder="XX-XXXXXXX-X" /></SettingsField>
+          <SettingsField label="PhilHealth Number"><Input defaultValue="" placeholder="XX-XXXXXXXXX-X" /></SettingsField>
+          <SettingsField label="Pag-IBIG Number"><Input defaultValue="" placeholder="XXXX-XXXX-XXXX" /></SettingsField>
+          <SettingsField label="BIR Registration Number"><Input defaultValue="" placeholder="BIR reg number" /></SettingsField>
+          <SettingsField label="RDO Code"><Input defaultValue="" placeholder="RDO code" /></SettingsField>
+        </div>
+
+        <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Preferences</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SettingsField label="Currency">
+            <select defaultValue="PHP" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <option value="PHP">PHP (₱)</option><option value="USD">USD ($)</option>
+            </select>
+          </SettingsField>
+          <SettingsField label="Date Format">
+            <select defaultValue="MM/DD/YYYY" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <option value="MM/DD/YYYY">MM/DD/YYYY</option><option value="DD/MM/YYYY">DD/MM/YYYY</option><option value="YYYY-MM-DD">YYYY-MM-DD</option>
+            </select>
+          </SettingsField>
+          <SettingsField label="Timezone">
+            <select defaultValue="Asia/Manila" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <option value="Asia/Manila">Asia/Manila (UTC+8)</option>
+            </select>
+          </SettingsField>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function TenantInfoTab() {
   const tenant = useQuery({ queryKey: ['tenant-info'], queryFn: () => api.get('/auth/tenant').then(r => r.data) });
   const health = useQuery({ queryKey: ['api-health'], queryFn: () => api.get('/health').then(r => r.data).catch(() => null) });
@@ -1031,7 +1093,7 @@ function TenantInfoTab() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold">Tenant Info</CardTitle>
+        <CardTitle className="text-lg font-semibold">About</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">System information, database connection, and software details.</p>
       </CardHeader>
       <CardContent className="pt-4 space-y-6">
