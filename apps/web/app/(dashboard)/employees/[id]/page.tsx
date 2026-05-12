@@ -118,14 +118,6 @@ export default function EmployeeDetailPage() {
               </div>
               {emp.email && <p className="text-sm text-white/60 mt-2">{emp.email}</p>}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge className={cn('mt-1', emp.employmentStatus === 'ACTIVE' || emp.employmentStatus === 'PROBATIONARY' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-400 text-white')}>
-                {emp.employmentStatus.replace('_', ' ')}
-              </Badge>
-              <Button size="sm" variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={() => router.push(`/employees`)}>
-                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-              </Button>
-            </div>
           </div>
         </div>
 
@@ -148,9 +140,15 @@ export default function EmployeeDetailPage() {
                 {emp.employeeLevel && <div className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" /><span>{emp.employeeLevel.name}</span></div>}
               </div>
               <div className="flex items-center gap-2 mt-2">
+                <StatusBadge status={emp.employmentStatus} />
                 <StatusBadge status={emp.employmentType} />
                 {emp.employeeLevel && <StatusBadge status={emp.employeeLevel.name} variant="info" />}
               </div>
+            </div>
+            <div className="pt-16 shrink-0">
+              <Button size="sm" onClick={() => router.push(`/employees`)} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+              </Button>
             </div>
           </div>
         </CardContent>
