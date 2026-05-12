@@ -123,44 +123,7 @@ export default function SettingsPage() {
         <div className="flex-1 min-w-0">
           {/* ─── Company Settings ──────────────────────────── */}
           {activeTab === 'company' && (
-            <SettingsCard title="Company & Payroll Settings" description="Payroll divisors and government registration numbers"
-              onSave={() => {
-                const form = document.getElementById('company-form') as HTMLFormElement;
-                const fd = new FormData(form);
-                saveCompany.mutate({
-                  payrollDaysDivisor: Number(fd.get('payrollDaysDivisor')),
-                  payrollHourlyDivisor: Number(fd.get('payrollHourlyDivisor')),
-                  tinNumber: fd.get('tinNumber') || null,
-                  sssEmployerNumber: fd.get('sssEmployerNumber') || null,
-                  philhealthNumber: fd.get('philhealthNumber') || null,
-                  pagibigNumber: fd.get('pagibigNumber') || null,
-                  birRegistrationNumber: fd.get('birRegistrationNumber') || null,
-                  rdoCode: fd.get('rdoCode') || null,
-                });
-              }}
-              isSaving={saveCompany.isPending}
-            >
-              <form id="company-form" className="space-y-5">
-                <p className="text-sm font-medium text-muted-foreground">Payroll Divisors</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SettingsField label="Days Divisor" hint="Working days per month (default: 26)">
-                    <Input name="payrollDaysDivisor" type="number" defaultValue={s.company?.payrollDaysDivisor ?? 26} />
-                  </SettingsField>
-                  <SettingsField label="Hourly Divisor" hint="Working hours per day (default: 8)">
-                    <Input name="payrollHourlyDivisor" type="number" defaultValue={s.company?.payrollHourlyDivisor ?? 8} />
-                  </SettingsField>
-                </div>
-                <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Government Registration</p></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SettingsField label="TIN Number"><Input name="tinNumber" defaultValue={s.company?.tinNumber || ''} /></SettingsField>
-                  <SettingsField label="SSS Employer Number"><Input name="sssEmployerNumber" defaultValue={s.company?.sssEmployerNumber || ''} /></SettingsField>
-                  <SettingsField label="PhilHealth Number"><Input name="philhealthNumber" defaultValue={s.company?.philhealthNumber || ''} /></SettingsField>
-                  <SettingsField label="Pag-IBIG Number"><Input name="pagibigNumber" defaultValue={s.company?.pagibigNumber || ''} /></SettingsField>
-                  <SettingsField label="BIR Registration Number"><Input name="birRegistrationNumber" defaultValue={s.company?.birRegistrationNumber || ''} /></SettingsField>
-                  <SettingsField label="RDO Code"><Input name="rdoCode" defaultValue={s.company?.rdoCode || ''} /></SettingsField>
-                </div>
-              </form>
-            </SettingsCard>
+            <TenantInfoTab />
           )}
 
           {/* ─── Gov Contribution Settings ────────────────── */}
@@ -577,6 +540,62 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function TenantInfoTab() {
+  const tenant = useQuery({ queryKey: ['tenant-info'], queryFn: () => api.get('/auth/tenant').then(r => r.data) });
+  const health = useQuery({ queryKey: ['api-health'], queryFn: () => api.get('/health').then(r => r.data).catch(() => null) });
+
+  const t = tenant.data;
+  const h = health.data;
+
+  const infoRows = [
+    { section: 'Tenant Information', items: [
+      { label: 'Company Name', value: t?.companyName || '-' },
+      { label: 'Company Code', value: t?.companyCode || '-' },
+      { label: 'Domain', value: t?.domain || '-' },
+      { label: 'Status', value: t?.status || '-' },
+      { label: 'Tenant ID', value: t?.id ? t.id.slice(0, 8) + '...' : '-', mono: true },
+    ]},
+    { section: 'Database', items: [
+      { label: 'Connection', value: h ? 'Connected' : 'Unknown', color: h ? 'text-green-600' : 'text-muted-foreground' },
+      { label: 'Provider', value: 'PostgreSQL 16' },
+      { label: 'Host', value: 'localhost:5448' },
+      { label: 'Database', value: 'cointrack_enterprise' },
+    ]},
+    { section: 'Software Information', items: [
+      { label: 'Application', value: 'CoinTrack Enterprise' },
+      { label: 'Version', value: '1.0.0' },
+      { label: 'API Framework', value: 'NestJS 10' },
+      { label: 'Frontend', value: 'Next.js 14' },
+      { label: 'ORM', value: 'Prisma 5' },
+      { label: 'API URL', value: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3009/api', mono: true },
+    ]},
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-semibold">Tenant Info</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">System information, database connection, and software details.</p>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-6">
+        {infoRows.map((section) => (
+          <div key={section.section}>
+            <p className="text-sm font-medium text-muted-foreground mb-3">{section.section}</p>
+            <div className="rounded-lg border divide-y">
+              {section.items.map((item: any) => (
+                <div key={item.label} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">{item.label}</span>
+                  <span className={cn('text-sm font-medium', item.mono && 'font-mono text-xs', item.color)}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
