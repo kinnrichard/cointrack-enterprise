@@ -140,12 +140,12 @@ export default function EmployeeDetailPage() {
                 )}
               </div>
             </div>
-            <div className="pt-2 sm:pt-7 flex-1 min-w-0">
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                {emp.site && <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><span>{emp.site.name}</span></div>}
-                {emp.phone && <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span>{emp.phone}</span></div>}
-                {emp.dateHired && <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-muted-foreground" /><span>Hired {fmtDate(emp.dateHired)}</span></div>}
-                {emp.employeeLevel && <div className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-muted-foreground" /><span>{emp.employeeLevel.name}</span></div>}
+            <div className="pt-16 flex-1 min-w-0">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                {emp.site && <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /><span>{emp.site.name}</span></div>}
+                {emp.phone && <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /><span>{emp.phone}</span></div>}
+                {emp.dateHired && <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /><span>Hired {fmtDate(emp.dateHired)}</span></div>}
+                {emp.employeeLevel && <div className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" /><span>{emp.employeeLevel.name}</span></div>}
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <StatusBadge status={emp.employmentType} />
