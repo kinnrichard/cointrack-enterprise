@@ -565,50 +565,12 @@ export default function SettingsPage() {
 
           {/* ─── Approval Chain ──────────────────────────── */}
           {activeTab === 'approval-chains' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Approval Chain</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Define who approves for each employee level. For example: Rank and File → 1st approver: Supervisor, 2nd approver: Manager.
-                  Used for leave applications, overtime requests, and other approval workflows.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
-                {(employeeLevels.data ?? []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Create Employee Levels first in the &quot;Employee Levels&quot; tab.</p>
-                ) : (
-                  (employeeLevels.data ?? []).map((level: any) => {
-                    const chains = (approvalChains.data ?? []).filter((c: any) => c.employeeLevelId === level.id).sort((a: any, b: any) => a.order - b.order);
-                    return (
-                      <div key={level.id} className="rounded-lg border overflow-hidden">
-                        <div className="px-4 py-3 bg-muted/50 border-b flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-muted-foreground w-6">{level.order}</span>
-                            <span className="text-sm font-semibold">{level.name}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{chains.length} approver{chains.length !== 1 ? 's' : ''}</span>
-                        </div>
-                        {chains.length === 0 ? (
-                          <div className="px-4 py-3 text-sm text-muted-foreground">No approvers defined — use the API to configure.</div>
-                        ) : (
-                          <div className="divide-y">
-                            {chains.map((chain: any) => (
-                              <div key={chain.id} className="px-4 py-2.5 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">{chain.order}</span>
-                                  <span className="text-sm">{chain.approverLevel.name}</span>
-                                </div>
-                                <span className="text-xs text-muted-foreground">{chain.order === 1 ? '1st Approver' : chain.order === 2 ? '2nd Approver' : `${chain.order}th Approver`}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
+            <ApprovalChainTab
+              levels={employeeLevels.data ?? []}
+              chains={approvalChains.data ?? []}
+              queryClient={queryClient}
+              toast={toast}
+            />
           )}
 
           {/* ─── Adjustment Types ─────────────────────────── */}
@@ -645,6 +607,120 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ApprovalChainTab({ levels, chains, queryClient, toast }: {
+  levels: any[]; chains: any[]; queryClient: any; toast: any;
+}) {
+  const [saving, setSaving] = useState<string | null>(null);
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [newApproverLevel, setNewApproverLevel] = useState('');
+
+  async function addApprover(employeeLevelId: string) {
+    if (!newApproverLevel) return;
+    const existing = chains.filter((c: any) => c.employeeLevelId === employeeLevelId);
+    const nextOrder = existing.length > 0 ? Math.max(...existing.map((c: any) => c.order)) + 1 : 1;
+    const approvers = [
+      ...existing.map((c: any) => ({ approverLevelId: c.approverLevelId, order: c.order })),
+      { approverLevelId: newApproverLevel, order: nextOrder },
+    ];
+    setSaving(employeeLevelId);
+    try {
+      await api.post('/settings/approval-chains', { employeeLevelId, approvers });
+      queryClient.invalidateQueries({ queryKey: ['approval-chains'] });
+      toast({ title: 'Approver added' });
+      setAddingTo(null);
+      setNewApproverLevel('');
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+    setSaving(null);
+  }
+
+  async function removeApprover(chainId: string, employeeLevelId: string) {
+    setSaving(employeeLevelId);
+    try {
+      await api.delete(`/settings/approval-chains/${chainId}`);
+      queryClient.invalidateQueries({ queryKey: ['approval-chains'] });
+      toast({ title: 'Approver removed' });
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+    setSaving(null);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-semibold">Approval Chain</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">
+          Define who approves for each employee level. Example: Rank and File → 1st: Supervisor, 2nd: Manager.
+        </p>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-4">
+        {levels.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">Create Employee Levels first in the &quot;Employee Levels&quot; tab.</p>
+        ) : (
+          levels.map((level: any) => {
+            const levelChains = chains.filter((c: any) => c.employeeLevelId === level.id).sort((a: any, b: any) => a.order - b.order);
+            const isSaving = saving === level.id;
+            return (
+              <div key={level.id} className="rounded-lg border overflow-hidden">
+                <div className="px-4 py-3 bg-muted/50 border-b flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-muted-foreground w-6">{level.order}</span>
+                    <span className="text-sm font-semibold">{level.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{levelChains.length} approver{levelChains.length !== 1 ? 's' : ''}</span>
+                    {addingTo !== level.id && (
+                      <button onClick={() => { setAddingTo(level.id); setNewApproverLevel(''); }}
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add approver">
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="divide-y">
+                  {levelChains.map((chain: any) => (
+                    <div key={chain.id} className="px-4 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">{chain.order}</span>
+                        <span className="text-sm">{chain.approverLevel.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{chain.order === 1 ? '1st Approver' : chain.order === 2 ? '2nd Approver' : `${chain.order}th Approver`}</span>
+                        <button onClick={() => removeApprover(chain.id, level.id)} disabled={isSaving}
+                          className="p-1 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {levelChains.length === 0 && addingTo !== level.id && (
+                    <div className="px-4 py-3 text-sm text-muted-foreground">No approvers — click + to add one.</div>
+                  )}
+                  {addingTo === level.id && (
+                    <div className="px-4 py-3 flex items-center gap-2">
+                      <Select value={newApproverLevel} onValueChange={setNewApproverLevel}>
+                        <SelectTrigger className="h-9 w-[200px]"><SelectValue placeholder="Select approver level" /></SelectTrigger>
+                        <SelectContent>
+                          {levels.filter((l: any) => l.id !== level.id && !levelChains.some((c: any) => c.approverLevelId === l.id)).map((l: any) => (
+                            <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={() => addApprover(level.id)} disabled={!newApproverLevel || isSaving}
+                        className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90 h-9">
+                        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Add'}
+                      </Button>
+                      <button onClick={() => setAddingTo(null)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
