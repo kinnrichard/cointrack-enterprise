@@ -164,7 +164,6 @@ export function Sidebar({ collapsed, onToggle }: Readonly<SidebarProps>) {
                 width={200}
                 height={50}
                 className="brightness-0 invert shrink-0"
-                priority
               />
             )}
           </div>
