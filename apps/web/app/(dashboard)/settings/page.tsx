@@ -21,13 +21,13 @@ const TABS = [
   { id: 'holiday', label: 'Holiday', icon: CalendarDays },
   { id: 'overtime', label: 'Overtime', icon: Timer },
   { id: 'payroll-periods', label: 'Timekeeping', icon: Clock },
+  { id: 'payroll', label: 'Payroll', icon: DollarSign },
   { id: 'rate-calculation', label: 'Rate', icon: Calculator },
   { id: 'gov-contributions', label: 'Government', icon: Landmark },
   { id: 'tax-table', label: 'Tax', icon: Receipt },
   { id: 'employee-levels', label: 'Employee Levels', icon: Users },
   { id: 'approval-chains', label: 'Approval Chain', icon: Users },
   { id: 'logo', label: 'Logo', icon: ImageIcon },
-  { id: 'adjustment-types', label: 'Adjustment Types', icon: Plus },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -377,40 +377,123 @@ export default function SettingsPage() {
             <LogoSettingsTab />
           )}
 
-          {/* ─── Adjustment Types ─────────────────────────── */}
-          {activeTab === 'adjustment-types' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Adjustment Types</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Custom payroll earnings and deductions</p>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="rounded-lg border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead><tr className="bg-muted/50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Name</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Type</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                    </tr></thead>
-                    <tbody>
-                      {(adjustmentTypes.data ?? []).length === 0 ? (
-                        <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No adjustment types configured. Use the API to create types.</td></tr>
-                      ) : (adjustmentTypes.data ?? []).map((a: any) => (
-                        <tr key={a.id} className="border-b">
-                          <td className="px-4 py-2 font-medium">{a.name}</td>
-                          <td className="px-4 py-2"><span className={cn('inline-flex px-2 py-0.5 rounded-full text-xs font-medium', a.type === 'EARNING' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>{a.type}</span></td>
-                          <td className="px-4 py-2">{a.isActive ? 'Active' : 'Inactive'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+          {/* ─── Payroll Settings ─────────────────────────── */}
+          {activeTab === 'payroll' && (
+            <PayrollSettingsTab settings={s} saveCompany={saveCompany} adjustmentTypes={adjustmentTypes.data ?? []} queryClient={queryClient} toast={toast} />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function PayrollSettingsTab({ settings: s, saveCompany, adjustmentTypes, queryClient, toast }: { settings: any; saveCompany: any; adjustmentTypes: any[]; queryClient: any; toast: any }) {
+  const [saving, setSaving] = useState(false);
+  const [addingAdj, setAddingAdj] = useState(false);
+  const [adjName, setAdjName] = useState('');
+  const [adjType, setAdjType] = useState('EARNING');
+
+  async function handleSaveDivisors() {
+    setSaving(true);
+    const form = document.getElementById('payroll-settings-form') as HTMLFormElement;
+    const fd = new FormData(form);
+    try {
+      await saveCompany.mutateAsync({
+        payrollDaysDivisor: Number(fd.get('payrollDaysDivisor')),
+        payrollHourlyDivisor: Number(fd.get('payrollHourlyDivisor')),
+      });
+    } catch {}
+    setSaving(false);
+  }
+
+  async function handleAddAdj() {
+    if (!adjName.trim()) return;
+    try {
+      await api.post('/settings/adjustment-types', { name: adjName.trim(), type: adjType });
+      queryClient.invalidateQueries({ queryKey: ['adjustment-types'] });
+      toast({ title: 'Adjustment type created' });
+      setAddingAdj(false); setAdjName(''); setAdjType('EARNING');
+    } catch (e: any) { toast({ title: 'Error', description: e?.response?.data?.message || 'Failed', variant: 'destructive' }); }
+  }
+
+  async function handleDeleteAdj(id: string) {
+    try { await api.delete(`/settings/adjustment-types/${id}`); queryClient.invalidateQueries({ queryKey: ['adjustment-types'] }); toast({ title: 'Deleted' }); }
+    catch { toast({ title: 'Error', variant: 'destructive' }); }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-lg font-semibold">Payroll Settings</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Payroll calculation divisors and custom adjustment types.</p>
+        </div>
+        <Button onClick={handleSaveDivisors} disabled={saving} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90 rounded-lg" size="sm">
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save
+        </Button>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-5">
+        <form id="payroll-settings-form">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Payroll Divisors</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingsField label="Days Divisor" hint="Working days per month (default: 26)">
+              <Input name="payrollDaysDivisor" type="number" defaultValue={s.company?.payrollDaysDivisor ?? 26} />
+            </SettingsField>
+            <SettingsField label="Hourly Divisor" hint="Working hours per day (default: 8)">
+              <Input name="payrollHourlyDivisor" type="number" defaultValue={s.company?.payrollHourlyDivisor ?? 8} />
+            </SettingsField>
+          </div>
+        </form>
+
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-muted-foreground">Adjustment Types</p>
+            {!addingAdj && (
+              <button onClick={() => setAddingAdj(true)} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Plus className="h-4 w-4" /></button>
+            )}
+          </div>
+          <div className="rounded-lg border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/50 border-b">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Name</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground w-[100px]">Type</th>
+                <th className="px-4 py-2 w-[50px]"></th>
+              </tr></thead>
+              <tbody>
+                {addingAdj && (
+                  <tr className="border-b bg-accent/20">
+                    <td className="px-4 py-2"><Input value={adjName} onChange={(e) => setAdjName(e.target.value)} className="h-8" placeholder="e.g., Meal Allowance" autoFocus /></td>
+                    <td className="px-4 py-2">
+                      <select value={adjType} onChange={(e) => setAdjType(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm">
+                        <option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" onClick={handleAddAdj} disabled={!adjName.trim()} className="h-7 px-2 bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">Add</Button>
+                        <button onClick={() => { setAddingAdj(false); setAdjName(''); }} className="text-xs text-muted-foreground hover:text-foreground px-1">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {adjustmentTypes.length === 0 && !addingAdj ? (
+                  <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">No adjustment types. Click + to add one.</td></tr>
+                ) : adjustmentTypes.map((a: any) => (
+                  <tr key={a.id} className="border-b hover:bg-accent/20">
+                    <td className="px-4 py-2 font-medium">{a.name}</td>
+                    <td className="px-4 py-2"><span className={cn('inline-flex px-2 py-0.5 rounded-full text-xs font-medium', a.type === 'EARNING' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>{a.type}</span></td>
+                    <td className="px-4 py-2 text-right">
+                      <button onClick={() => handleDeleteAdj(a.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
