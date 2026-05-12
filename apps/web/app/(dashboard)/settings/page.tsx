@@ -157,16 +157,16 @@ export default function SettingsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <SettingsField label="Deduction Frequency" hint="How often to deduct contributions">
-                    <select name="deductionFrequency" defaultValue={s.govContrib?.deductionFrequency || 'PER_CUTOFF'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="PER_CUTOFF">Per Cutoff (twice/month)</option>
-                      <option value="MONTHLY">Monthly (once/month)</option>
-                    </select>
+                    <Select name="deductionFrequency" defaultValue={s.govContrib?.deductionFrequency || 'PER_CUTOFF'}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="PER_CUTOFF">Per Cutoff (twice/month)</SelectItem><SelectItem value="MONTHLY">Monthly (once/month)</SelectItem></SelectContent>
+                    </Select>
                   </SettingsField>
                   <SettingsField label="Monthly Deduction Cutoff" hint="Which cutoff to deduct (if monthly)">
-                    <select name="monthlyDeductionCutoff" defaultValue={s.govContrib?.monthlyDeductionCutoff || 'SECOND'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="FIRST">1st Cutoff</option>
-                      <option value="SECOND">2nd Cutoff</option>
-                    </select>
+                    <Select name="monthlyDeductionCutoff" defaultValue={s.govContrib?.monthlyDeductionCutoff || 'SECOND'}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="FIRST">1st Cutoff</SelectItem><SelectItem value="SECOND">2nd Cutoff</SelectItem></SelectContent>
+                    </Select>
                   </SettingsField>
                 </div>
               </form>
@@ -212,14 +212,16 @@ export default function SettingsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <SettingsField label="Rounding Interval (min)">
-                    <select name="timeRoundingInterval" defaultValue={s.attendance?.timeRoundingInterval ?? 1} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="1">1 minute</option><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option>
-                    </select>
+                    <Select defaultValue={String(s.attendance?.timeRoundingInterval ?? 1)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="1">1 minute</SelectItem><SelectItem value="5">5 minutes</SelectItem><SelectItem value="15">15 minutes</SelectItem><SelectItem value="30">30 minutes</SelectItem></SelectContent>
+                    </Select>
                   </SettingsField>
                   <SettingsField label="Rounding Method">
-                    <select name="roundingMethod" defaultValue={s.attendance?.roundingMethod || 'nearest'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="nearest">Nearest</option><option value="up">Round Up</option><option value="down">Round Down</option>
-                    </select>
+                    <Select defaultValue={s.attendance?.roundingMethod || 'nearest'}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="nearest">Nearest</SelectItem><SelectItem value="up">Round Up</SelectItem><SelectItem value="down">Round Down</SelectItem></SelectContent>
+                    </Select>
                   </SettingsField>
                 </div>
               </form>
@@ -337,18 +339,20 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <SettingsField label="Value"><Input name="beforeHolidayValue" type="number" defaultValue={s.holiday?.beforeHolidayValue ?? 1} /></SettingsField>
                   <SettingsField label="Unit">
-                    <select name="beforeHolidayUnit" defaultValue={s.holiday?.beforeHolidayUnit || 'days'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="days">Days</option><option value="hours">Hours</option>
-                    </select>
+                    <Select defaultValue={s.holiday?.beforeHolidayUnit || 'days'}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="days">Days</SelectItem><SelectItem value="hours">Hours</SelectItem></SelectContent>
+                    </Select>
                   </SettingsField>
                 </div>
                 <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">After Holiday</p></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <SettingsField label="Value"><Input name="afterHolidayValue" type="number" defaultValue={s.holiday?.afterHolidayValue ?? 1} /></SettingsField>
                   <SettingsField label="Unit">
-                    <select name="afterHolidayUnit" defaultValue={s.holiday?.afterHolidayUnit || 'days'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                      <option value="days">Days</option><option value="hours">Hours</option>
-                    </select>
+                    <Select defaultValue={s.holiday?.afterHolidayUnit || 'days'}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="days">Days</SelectItem><SelectItem value="hours">Hours</SelectItem></SelectContent>
+                    </Select>
                   </SettingsField>
                 </div>
               </form>
@@ -472,9 +476,10 @@ function PayrollSettingsTab({ settings: s, saveCompany, adjustmentTypes, queryCl
                   <tr className="border-b bg-accent/20">
                     <td className="px-4 py-2"><Input value={adjName} onChange={(e) => setAdjName(e.target.value)} className="h-8" placeholder="e.g., Meal Allowance" autoFocus /></td>
                     <td className="px-4 py-2">
-                      <select value={adjType} onChange={(e) => setAdjType(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm">
-                        <option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option>
-                      </select>
+                      <Select value={adjType} onValueChange={setAdjType}>
+                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="EARNING">Earning</SelectItem><SelectItem value="DEDUCTION">Deduction</SelectItem></SelectContent>
+                      </Select>
                     </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -689,10 +694,10 @@ function TaxTableTab({ brackets, queryClient, toast }: { brackets: any[]; queryC
           <p className="text-sm text-muted-foreground mt-1">Income tax brackets for withholding tax calculation (TRAIN Law).</p>
         </div>
         <div className="flex items-center gap-2">
-          <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm">
-            <option value="">All Years</option>
-            {years.map((y: number) => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <Select value={filterYear || 'ALL'} onValueChange={(v) => setFilterYear(v === 'ALL' ? '' : v)}>
+            <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="All Years" /></SelectTrigger>
+            <SelectContent><SelectItem value="ALL">All Years</SelectItem>{years.map((y: number) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          </Select>
           {!adding && !editingId && (
             <Button size="sm" onClick={() => { setAdding(true); resetForm(); }} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
               <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Bracket
@@ -817,14 +822,16 @@ function TimekeepingSettingsTab({ periods, queryClient, toast }: { periods: any[
           <div className="rounded-lg border p-4 bg-accent/20 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <SettingsField label="Month">
-                <select value={month} onChange={(e) => { const m = Number(e.target.value); prefill(m, year); }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  {monthNames.map((n, i) => <option key={n} value={i + 1}>{n}</option>)}
-                </select>
+                <Select value={String(month)} onValueChange={(v) => { const m = Number(v); prefill(m, year); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{monthNames.map((n, i) => <SelectItem key={n} value={String(i + 1)}>{n}</SelectItem>)}</SelectContent>
+                </Select>
               </SettingsField>
               <SettingsField label="Year">
-                <select value={year} onChange={(e) => { const y = Number(e.target.value); prefill(month, y); }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
+                <Select value={String(year)} onValueChange={(v) => { const y = Number(v); prefill(month, y); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{[currentYear - 1, currentYear, currentYear + 1].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                </Select>
               </SettingsField>
               <div className="col-span-2 flex items-end">
                 <div className="flex items-center gap-2 pb-2">
@@ -957,12 +964,10 @@ function LeavesSettingsTab({ settings: s, saveLeave, saveLeaveCredit }: { settin
               <Input name="sickLeaveAdvanceNoticeDays" type="number" defaultValue={s.leave?.sickLeaveAdvanceNoticeDays ?? 0} />
             </SettingsField>
             <SettingsField label="Time Unit">
-              <select name="leaveNoticeUnit" defaultValue="days" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="days">Days</option>
-                <option value="hours">Hours</option>
-                <option value="weeks">Weeks</option>
-                <option value="months">Months</option>
-              </select>
+              <Select defaultValue="days">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="days">Days</SelectItem><SelectItem value="hours">Hours</SelectItem><SelectItem value="weeks">Weeks</SelectItem><SelectItem value="months">Months</SelectItem></SelectContent>
+              </Select>
             </SettingsField>
           </div>
 
@@ -970,10 +975,10 @@ function LeavesSettingsTab({ settings: s, saveLeave, saveLeaveCredit }: { settin
           <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Accrual & Policy Config</p></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SettingsField label="Accrual Method">
-              <select name="accrualMethod" defaultValue={s.leaveCredit?.accrualMethod || 'annual'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="annual">Annual (all at once)</option>
-                <option value="monthly">Monthly (pro-rated)</option>
-              </select>
+              <Select defaultValue={s.leaveCredit?.accrualMethod || 'annual'}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="annual">Annual (all at once)</SelectItem><SelectItem value="monthly">Monthly (pro-rated)</SelectItem></SelectContent>
+              </Select>
             </SettingsField>
           </div>
 
@@ -1039,19 +1044,22 @@ function GeneralSettingsTab() {
         <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Preferences</p></div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <SettingsField label="Currency">
-            <select defaultValue="PHP" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-              <option value="PHP">PHP (₱)</option><option value="USD">USD ($)</option>
-            </select>
+            <Select defaultValue="PHP">
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="PHP">PHP (₱)</SelectItem><SelectItem value="USD">USD ($)</SelectItem></SelectContent>
+            </Select>
           </SettingsField>
           <SettingsField label="Date Format">
-            <select defaultValue="MM/DD/YYYY" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-              <option value="MM/DD/YYYY">MM/DD/YYYY</option><option value="DD/MM/YYYY">DD/MM/YYYY</option><option value="YYYY-MM-DD">YYYY-MM-DD</option>
-            </select>
+            <Select defaultValue="MM/DD/YYYY">
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem><SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem><SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem></SelectContent>
+            </Select>
           </SettingsField>
           <SettingsField label="Timezone">
-            <select defaultValue="Asia/Manila" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-              <option value="Asia/Manila">Asia/Manila (UTC+8)</option>
-            </select>
+            <Select defaultValue="Asia/Manila">
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="Asia/Manila">Asia/Manila (UTC+8)</SelectItem></SelectContent>
+            </Select>
           </SettingsField>
         </div>
       </CardContent>
