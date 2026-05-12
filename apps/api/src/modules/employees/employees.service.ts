@@ -178,4 +178,64 @@ export class EmployeesService {
     await this.prisma.employee.delete({ where: { id } });
     return { message: 'Employee deleted' };
   }
+
+  // ─── Schedule Assignments ─────────────────────────────────────────
+
+  async getScheduleAssignments(tenantId: string, employeeId: string) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    return this.prisma.employeeSchedule.findMany({
+      where: { employeeId },
+      orderBy: { startDate: 'desc' },
+      include: {
+        schedule: { select: { id: true, name: true, code: true, timeIn: true, timeOut: true } },
+      },
+    });
+  }
+
+  async createScheduleAssignment(tenantId: string, employeeId: string, data: any) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    return this.prisma.employeeSchedule.create({
+      data: {
+        employeeId,
+        scheduleId: data.scheduleId,
+        startDate: new Date(data.startDate),
+        endDate: data.endDate ? new Date(data.endDate) : null,
+        remarks: data.remarks || null,
+      },
+      include: {
+        schedule: { select: { id: true, name: true, code: true, timeIn: true, timeOut: true } },
+      },
+    });
+  }
+
+  async updateScheduleAssignment(tenantId: string, employeeId: string, assignmentId: string, data: any) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    const updateData: any = {};
+    if (data.scheduleId !== undefined) updateData.scheduleId = data.scheduleId;
+    if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
+    if (data.endDate !== undefined) updateData.endDate = data.endDate ? new Date(data.endDate) : null;
+    if (data.remarks !== undefined) updateData.remarks = data.remarks;
+
+    return this.prisma.employeeSchedule.update({
+      where: { id: assignmentId },
+      data: updateData,
+      include: {
+        schedule: { select: { id: true, name: true, code: true, timeIn: true, timeOut: true } },
+      },
+    });
+  }
+
+  async deleteScheduleAssignment(tenantId: string, employeeId: string, assignmentId: string) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    await this.prisma.employeeSchedule.delete({ where: { id: assignmentId } });
+    return { message: 'Schedule assignment deleted' };
+  }
 }

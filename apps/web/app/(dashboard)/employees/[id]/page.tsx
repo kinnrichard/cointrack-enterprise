@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import {
   ArrowLeft, Pencil, Users, MapPin, Briefcase, Calendar, Phone, Mail,
-  User, Building2, Clock, CreditCard, Shield, Hash, Globe, Heart, Loader2,
+  User, Building2, Clock, CreditCard, Shield, Hash, Globe, Heart, Loader2, Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -302,9 +302,7 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="schedules" className="mt-5">
-          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
-            Schedule assignment history for this employee
-          </div>
+          <ScheduleAssignmentsTab employeeId={emp.id} defaultSchedule={emp.schedule} />
         </TabsContent>
 
         <TabsContent value="attendance" className="mt-5">
@@ -425,6 +423,154 @@ export default function EmployeeDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ─── Schedule Assignments Tab ────────────────────────────────────────────
+
+interface ScheduleAssignment {
+  id: string; scheduleId: string; startDate: string; endDate: string | null; remarks: string | null;
+  schedule: { id: string; name: string; code: string | null; timeIn: string; timeOut: string };
+}
+
+function ScheduleAssignmentsTab({ employeeId, defaultSchedule }: { employeeId: string; defaultSchedule: { id: string; name: string } | null }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<ScheduleAssignment | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [scheduleId, setScheduleId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [remarks, setRemarks] = useState('');
+
+  const schedulesLookup = useQuery({ queryKey: ['schedules-lookup'], queryFn: () => fetchLookup('schedules') });
+  const { data: assignments, isLoading } = useQuery<ScheduleAssignment[]>({
+    queryKey: ['employee-schedules', employeeId],
+    queryFn: () => api.get(`/employees/${employeeId}/schedules`).then(r => r.data),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = { scheduleId, startDate, endDate: endDate || null, remarks: remarks || null };
+      if (editingAssignment) return api.put(`/employees/${employeeId}/schedules/${editingAssignment.id}`, payload);
+      return api.post(`/employees/${employeeId}/schedules`, payload);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employee-schedules', employeeId] }); toast({ title: editingAssignment ? 'Updated' : 'Created' }); closeModal(); },
+    onError: () => toast({ title: 'Error', variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (aid: string) => api.delete(`/employees/${employeeId}/schedules/${aid}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employee-schedules', employeeId] }); toast({ title: 'Deleted' }); setDeleting(null); },
+    onError: () => toast({ title: 'Error', variant: 'destructive' }),
+  });
+
+  function openAdd() { setEditingAssignment(null); setScheduleId(''); setStartDate(''); setEndDate(''); setRemarks(''); setModalOpen(true); }
+  function openEditA(a: ScheduleAssignment) { setEditingAssignment(a); setScheduleId(a.scheduleId); setStartDate(a.startDate.slice(0, 10)); setEndDate(a.endDate ? a.endDate.slice(0, 10) : ''); setRemarks(a.remarks || ''); setModalOpen(true); }
+  function closeModal() { setModalOpen(false); setEditingAssignment(null); }
+
+  return (
+    <div className="space-y-5">
+      <Card><CardContent className="p-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Default Schedule</p>
+          <p className="text-sm font-medium mt-1">{defaultSchedule ? defaultSchedule.name : <span className="text-muted-foreground">No default schedule assigned</span>}</p>
+        </div>
+        <p className="text-xs text-muted-foreground max-w-xs text-right">Fallback when no specific assignment matches the date.</p>
+      </CardContent></Card>
+
+      <p className="text-xs text-muted-foreground">Assign different schedules for specific date ranges. The most specific assignment takes priority over the default schedule.</p>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">Schedule Assignments</p>
+        <Button size="sm" onClick={openAdd} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">Add Assignment</Button>
+      </div>
+
+      <div className="rounded-lg border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead><tr className="bg-muted/50 border-b">
+            <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Schedule</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Time</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Start Date</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">End Date</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Remarks</th>
+            <th className="px-4 py-2 w-[80px]"></th>
+          </tr></thead>
+          <tbody>
+            {isLoading ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
+            ) : (assignments ?? []).length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No schedule assignments yet.</td></tr>
+            ) : (assignments ?? []).map((a) => (
+              <tr key={a.id} className="border-b hover:bg-accent/20">
+                <td className="px-4 py-2 font-medium">{a.schedule.name} {a.schedule.code && <span className="text-xs text-muted-foreground">({a.schedule.code})</span>}</td>
+                <td className="px-4 py-2 font-mono text-xs">{a.schedule.timeIn} — {a.schedule.timeOut}</td>
+                <td className="px-4 py-2">{format(new Date(a.startDate), 'MMM d, yyyy')}</td>
+                <td className="px-4 py-2">{a.endDate ? format(new Date(a.endDate), 'MMM d, yyyy') : <StatusBadge status="ONGOING" variant="success" />}</td>
+                <td className="px-4 py-2 text-xs text-muted-foreground">{a.remarks || '—'}</td>
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditA(a)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setDeleting(a.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={modalOpen} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 gap-0">
+          <div className="px-6 pt-5 pb-4 bg-muted/50 border-b rounded-t-2xl">
+            <DialogTitle className="text-xl font-semibold">{editingAssignment ? 'Edit Assignment' : 'Add Schedule Assignment'}</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">Assign a schedule for a specific date range.</DialogDescription>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Schedule <span className="text-red-500">*</span></Label>
+              <Select value={scheduleId} onValueChange={setScheduleId}>
+                <SelectTrigger><SelectValue placeholder="Select schedule" /></SelectTrigger>
+                <SelectContent>{(schedulesLookup.data ?? []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5"><Label className="text-sm">Start Date <span className="text-red-500">*</span></Label>
+                <DatePicker value={startDate ? new Date(startDate) : undefined} onChange={(d) => setStartDate(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Start date" />
+              </div>
+              <div className="space-y-1.5"><Label className="text-sm">End Date <span className="text-xs text-muted-foreground">(empty = ongoing)</span></Label>
+                <DatePicker value={endDate ? new Date(endDate) : undefined} onChange={(d) => setEndDate(d ? format(d, 'yyyy-MM-dd') : '')} placeholder="Ongoing" />
+              </div>
+            </div>
+            <div className="space-y-1.5"><Label className="text-sm">Remarks</Label><Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional notes..." className="min-h-[60px]" /></div>
+          </div>
+          <div className="px-6 py-4 border-t border-border/50 flex items-center justify-between">
+            <button type="button" onClick={closeModal} className="text-sm font-medium text-muted-foreground hover:text-red-500 transition-colors">Cancel</button>
+            <Button onClick={() => saveMutation.mutate()} disabled={!scheduleId || !startDate || saveMutation.isPending} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90 rounded-lg">
+              {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingAssignment ? 'Save Changes' : 'Create Assignment'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {deleting && (
+        <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+          <DialogContent className="max-w-xs p-5">
+            <DialogTitle className="text-sm font-semibold">Delete Assignment</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">Are you sure? This cannot be undone.</DialogDescription>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setDeleting(null)} className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground">Cancel</button>
+              <button onClick={() => deleting && deleteMutation.mutate(deleting)} disabled={deleteMutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5">
+                {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Delete
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

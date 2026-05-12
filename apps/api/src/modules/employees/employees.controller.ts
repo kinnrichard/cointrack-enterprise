@@ -84,4 +84,25 @@ export class EmployeesController {
     await this.employeesService.update(req.user.tenantId, id, { photo: photoUrl });
     return { url: photoUrl };
   }
+
+  // ─── Schedule Assignments ───────────────────────────────────────
+  @Get(':id/schedules')
+  getScheduleAssignments(@Req() req: any, @Param('id') id: string) {
+    return this.employeesService.getScheduleAssignments(req.user.tenantId, id);
+  }
+
+  @Post(':id/schedules')
+  createScheduleAssignment(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.employeesService.createScheduleAssignment(req.user.tenantId, id, body);
+  }
+
+  @Put(':id/schedules/:assignmentId')
+  updateScheduleAssignment(@Req() req: any, @Param('id') id: string, @Param('assignmentId') assignmentId: string, @Body() body: any) {
+    return this.employeesService.updateScheduleAssignment(req.user.tenantId, id, assignmentId, body);
+  }
+
+  @Delete(':id/schedules/:assignmentId')
+  deleteScheduleAssignment(@Req() req: any, @Param('id') id: string, @Param('assignmentId') assignmentId: string) {
+    return this.employeesService.deleteScheduleAssignment(req.user.tenantId, id, assignmentId);
+  }
 }
