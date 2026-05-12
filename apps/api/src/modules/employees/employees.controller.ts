@@ -6,7 +6,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
-import { v4 as uuid } from 'crypto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { EmployeesService } from './employees.service';
 
