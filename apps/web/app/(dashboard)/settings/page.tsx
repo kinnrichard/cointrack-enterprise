@@ -530,37 +530,7 @@ export default function SettingsPage() {
 
           {/* ─── Employee Levels ─────────────────────────── */}
           {activeTab === 'employee-levels' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Employee Levels</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Define your organization&apos;s hierarchy levels. Higher order = more senior. Used in the Employee form for &quot;Employee Level&quot; and &quot;Reports To&quot;.</p>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="rounded-lg border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead><tr className="bg-muted/50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Order</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Level Name</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                    </tr></thead>
-                    <tbody>
-                      {(employeeLevels.data ?? []).length === 0 ? (
-                        <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                          No employee levels defined yet.
-                          <br /><span className="text-xs">Examples: Rank and File (0), Team Lead (1), Supervisor (2), Manager (3), Director (4)</span>
-                        </td></tr>
-                      ) : (employeeLevels.data ?? []).map((l: any) => (
-                        <tr key={l.id} className="border-b">
-                          <td className="px-4 py-2 font-mono text-muted-foreground">{l.order}</td>
-                          <td className="px-4 py-2 font-medium">{l.name}</td>
-                          <td className="px-4 py-2">{l.isActive ? 'Active' : 'Inactive'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <EmployeeLevelsTab levels={employeeLevels.data ?? []} queryClient={queryClient} toast={toast} />
           )}
 
           {/* ─── Approval Chain ──────────────────────────── */}
@@ -607,6 +577,127 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function EmployeeLevelsTab({ levels, queryClient, toast }: { levels: any[]; queryClient: any; toast: any }) {
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [order, setOrder] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await api.post('/settings/employee-levels', { name: name.trim(), order });
+      queryClient.invalidateQueries({ queryKey: ['employee-levels'] });
+      toast({ title: 'Level created' });
+      setAdding(false); setName(''); setOrder(0);
+    } catch (e: any) { toast({ title: 'Error', description: e?.response?.data?.message || 'Failed', variant: 'destructive' }); }
+    setSaving(false);
+  }
+
+  async function handleUpdate(id: string) {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await api.put(`/settings/employee-levels/${id}`, { name: name.trim(), order });
+      queryClient.invalidateQueries({ queryKey: ['employee-levels'] });
+      toast({ title: 'Level updated' });
+      setEditingId(null); setName(''); setOrder(0);
+    } catch (e: any) { toast({ title: 'Error', description: e?.response?.data?.message || 'Failed', variant: 'destructive' }); }
+    setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    setSaving(true);
+    try {
+      await api.delete(`/settings/employee-levels/${id}`);
+      queryClient.invalidateQueries({ queryKey: ['employee-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['approval-chains'] });
+      toast({ title: 'Level deleted' });
+    } catch (e: any) { toast({ title: 'Error', description: e?.response?.data?.message || 'Cannot delete — level may be in use', variant: 'destructive' }); }
+    setSaving(false);
+  }
+
+  function startEdit(l: any) { setEditingId(l.id); setName(l.name); setOrder(l.order); setAdding(false); }
+  function cancelEdit() { setEditingId(null); setAdding(false); setName(''); setOrder(0); }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-lg font-semibold">Employee Levels</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Define your hierarchy levels. Higher order = more senior. These are used in Employee form and Approval Chain.</p>
+        </div>
+        {!adding && !editingId && (
+          <Button size="sm" onClick={() => { setAdding(true); setName(''); setOrder(levels.length); }} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Level
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="pt-4">
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-muted/50 border-b">
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground w-[80px]">Order</th>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Level Name</th>
+              <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground w-[100px]">Actions</th>
+            </tr></thead>
+            <tbody>
+              {levels.length === 0 && !adding && (
+                <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                  No employee levels defined yet. Click &quot;Add Level&quot; to create one.
+                </td></tr>
+              )}
+              {levels.map((l: any) => (
+                editingId === l.id ? (
+                  <tr key={l.id} className="border-b bg-accent/30">
+                    <td className="px-4 py-2"><Input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} className="h-8 w-16" /></td>
+                    <td className="px-4 py-2"><Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" placeholder="Level name" /></td>
+                    <td className="px-4 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" onClick={() => handleUpdate(l.id)} disabled={saving || !name.trim()} className="h-7 px-2 bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+                          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        </Button>
+                        <button onClick={cancelEdit} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={l.id} className="border-b hover:bg-accent/20">
+                    <td className="px-4 py-2 font-mono text-muted-foreground">{l.order}</td>
+                    <td className="px-4 py-2 font-medium">{l.name}</td>
+                    <td className="px-4 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => startEdit(l)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => handleDelete(l.id)} disabled={saving} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              ))}
+              {adding && (
+                <tr className="border-b bg-accent/30">
+                  <td className="px-4 py-2"><Input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} className="h-8 w-16" /></td>
+                  <td className="px-4 py-2"><Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" placeholder="e.g., Team Lead" autoFocus /></td>
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="sm" onClick={handleAdd} disabled={saving || !name.trim()} className="h-7 px-2 bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Add'}
+                      </Button>
+                      <button onClick={cancelEdit} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
