@@ -130,7 +130,7 @@ export default function EmployeeDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employee', id] });
       setEditOpen(false);
-      toast({ title: 'Employee updated' });
+      toast({ title: 'Employee updated', description: 'Changes have been saved successfully.' });
     },
     onError: () => toast({ title: 'Error', description: 'Failed to update.', variant: 'destructive' }),
   });
