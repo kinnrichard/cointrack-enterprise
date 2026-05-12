@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import {
   ArrowLeft, Pencil, Users, MapPin, Briefcase, Calendar, Phone, Mail,
   User, Building2, Clock, CreditCard, Shield, Hash, Globe, Heart, Loader2, Trash2,
+  Upload, FileText, Download, Eye,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -342,9 +343,7 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="documents" className="mt-5">
-          <div className="flex h-[200px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
-            201 file — employee documents, contracts, certificates
-          </div>
+          <DocumentsTab employeeId={emp.id} />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-5">
@@ -560,6 +559,143 @@ function ScheduleAssignmentsTab({ employeeId, defaultSchedule }: { employeeId: s
         <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
           <DialogContent className="max-w-xs p-5">
             <DialogTitle className="text-sm font-semibold">Delete Assignment</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">Are you sure? This cannot be undone.</DialogDescription>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setDeleting(null)} className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground">Cancel</button>
+              <button onClick={() => deleting && deleteMutation.mutate(deleting)} disabled={deleteMutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5">
+                {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Delete
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
+
+// ─── Documents (201 File) Tab ────────────────────────────────────────────
+
+interface EmployeeDoc {
+  id: string; name: string; fileName: string; fileUrl: string;
+  fileSize: number | null; mimeType: string | null; category: string | null; createdAt: string;
+}
+
+const DOC_CATEGORIES = ['Contract', 'Certificate', 'ID', 'Resume', 'Clearance', 'COE', 'NBI', 'Medical', 'Other'];
+
+function getFileIcon(mime: string | null) {
+  if (!mime) return { color: 'bg-gray-100 text-gray-600', label: 'FILE' };
+  if (mime.includes('pdf')) return { color: 'bg-red-100 text-red-700', label: 'PDF' };
+  if (mime.includes('word') || mime.includes('doc')) return { color: 'bg-blue-100 text-blue-700', label: 'DOC' };
+  if (mime.includes('sheet') || mime.includes('excel') || mime.includes('xls')) return { color: 'bg-green-100 text-green-700', label: 'XLS' };
+  if (mime.includes('image')) return { color: 'bg-purple-100 text-purple-700', label: 'IMG' };
+  return { color: 'bg-gray-100 text-gray-600', label: 'FILE' };
+}
+
+function formatFileSize(bytes: number | null) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function DocumentsTab({ employeeId }: { employeeId: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [category, setCategory] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
+
+  const { data: docs, isLoading } = useQuery<EmployeeDoc[]>({
+    queryKey: ['employee-documents', employeeId],
+    queryFn: () => api.get(`/employees/${employeeId}/documents`).then(r => r.data),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (docId: string) => api.delete(`/employees/${employeeId}/documents/${docId}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employee-documents', employeeId] }); toast({ title: 'Document deleted' }); setDeleting(null); },
+    onError: () => toast({ title: 'Error', variant: 'destructive' }),
+  });
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('name', file.name);
+      if (category) formData.append('category', category);
+      await api.post(`/employees/${employeeId}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      queryClient.invalidateQueries({ queryKey: ['employee-documents', employeeId] });
+      toast({ title: 'Document uploaded' });
+    } catch { toast({ title: 'Error', description: 'Upload failed', variant: 'destructive' }); }
+    setUploading(false);
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Upload Zone */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Category (optional)" /></SelectTrigger>
+            <SelectContent>{DOC_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <label className={cn(
+          'inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors',
+          uploading ? 'opacity-50 cursor-wait' : 'hover:border-primary hover:bg-accent/50'
+        )}>
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
+          <span className="text-sm font-medium">{uploading ? 'Uploading...' : 'Upload Document'}</span>
+          <input type="file" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }} />
+        </label>
+      </div>
+      <p className="text-xs text-muted-foreground">Max 10MB per file. Supports PDF, DOC, XLS, images, and other formats.</p>
+
+      {/* Document List */}
+      <div className="rounded-lg border overflow-hidden">
+        {isLoading ? (
+          <div className="px-4 py-8 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></div>
+        ) : (docs ?? []).length === 0 ? (
+          <div className="px-4 py-12 text-center">
+            <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {(docs ?? []).map((doc) => {
+              const icon = getFileIcon(doc.mimeType);
+              return (
+                <div key={doc.id} className="flex items-center gap-4 px-4 py-3 hover:bg-accent/20 transition-colors group">
+                  <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold', icon.color)}>
+                    {icon.label}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{doc.name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {doc.category && <span className="bg-muted px-1.5 py-0.5 rounded">{doc.category}</span>}
+                      <span>{formatFileSize(doc.fileSize)}</span>
+                      <span>{format(new Date(doc.createdAt), 'MMM d, yyyy')}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <a href={`${apiBase}${doc.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"><Eye className="h-3.5 w-3.5" /></a>
+                    <a href={`${apiBase}${doc.fileUrl}`} download={doc.fileName} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Download className="h-3.5 w-3.5" /></a>
+                    <button onClick={() => setDeleting(doc.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {deleting && (
+        <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+          <DialogContent className="max-w-xs p-5">
+            <DialogTitle className="text-sm font-semibold">Delete Document</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground mt-1">Are you sure? This cannot be undone.</DialogDescription>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setDeleting(null)} className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground">Cancel</button>

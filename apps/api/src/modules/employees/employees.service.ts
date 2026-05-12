@@ -179,6 +179,40 @@ export class EmployeesService {
     return { message: 'Employee deleted' };
   }
 
+  // ─── Documents (201 File) ──────────────────────────────────────────
+
+  async getDocuments(tenantId: string, employeeId: string) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+    return this.prisma.employeeDocument.findMany({
+      where: { employeeId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createDocument(tenantId: string, employeeId: string, data: any) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+    return this.prisma.employeeDocument.create({
+      data: {
+        employeeId,
+        name: data.name,
+        fileName: data.fileName,
+        fileUrl: data.fileUrl,
+        fileSize: data.fileSize || null,
+        mimeType: data.mimeType || null,
+        category: data.category || null,
+      },
+    });
+  }
+
+  async deleteDocument(tenantId: string, employeeId: string, docId: string) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+    await this.prisma.employeeDocument.delete({ where: { id: docId } });
+    return { message: 'Document deleted' };
+  }
+
   // ─── Schedule Assignments ─────────────────────────────────────────
 
   async getScheduleAssignments(tenantId: string, employeeId: string) {

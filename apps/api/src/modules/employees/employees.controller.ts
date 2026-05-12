@@ -85,6 +85,48 @@ export class EmployeesController {
     return { url: photoUrl };
   }
 
+  // ─── Documents (201 File) ────────────────────────────────────────
+  @Get(':id/documents')
+  getDocuments(@Req() req: any, @Param('id') id: string) {
+    return this.employeesService.getDocuments(req.user.tenantId, id);
+  }
+
+  @Post(':id/documents')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: (_req, _file, cb) => {
+        const dir = join(process.cwd(), 'uploads', 'documents');
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+      },
+      filename: (_req, file, cb) => {
+        const id = crypto.randomUUID();
+        cb(null, `${id}${extname(file.originalname)}`);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  }))
+  async uploadDocument(
+    @Req() req: any,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    return this.employeesService.createDocument(req.user.tenantId, id, {
+      name: body.name || file.originalname,
+      fileName: file.originalname,
+      fileUrl: `/uploads/documents/${file.filename}`,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      category: body.category || null,
+    });
+  }
+
+  @Delete(':id/documents/:docId')
+  deleteDocument(@Req() req: any, @Param('id') id: string, @Param('docId') docId: string) {
+    return this.employeesService.deleteDocument(req.user.tenantId, id, docId);
+  }
+
   // ─── Schedule Assignments ───────────────────────────────────────
   @Get(':id/schedules')
   getScheduleAssignments(@Req() req: any, @Param('id') id: string) {
