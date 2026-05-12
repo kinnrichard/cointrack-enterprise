@@ -355,40 +355,9 @@ export default function SettingsPage() {
               </form>
             </SettingsCard>
           )}
-          {/* ─── Payroll Periods ─────────────────────────── */}
+          {/* ─── Timekeeping / Payroll Periods ─────────────── */}
           {activeTab === 'payroll-periods' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Payroll Period Settings</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Configure monthly cutoff dates and pay dates</p>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="rounded-lg border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead><tr className="bg-muted/50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Month/Year</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">1st Period</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">1st Pay Date</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">2nd Period</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">2nd Pay Date</th>
-                    </tr></thead>
-                    <tbody>
-                      {(payrollPeriods.data ?? []).length === 0 ? (
-                        <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No payroll periods configured. Use the API to create periods.</td></tr>
-                      ) : (payrollPeriods.data ?? []).map((p: any) => (
-                        <tr key={p.id} className="border-b">
-                          <td className="px-4 py-2 font-medium">{p.month}/{p.year}</td>
-                          <td className="px-4 py-2">{p.firstPeriodStart?.slice(0, 10)} — {p.firstPeriodEnd?.slice(0, 10)}</td>
-                          <td className="px-4 py-2">{p.firstPayDate?.slice(0, 10)}</td>
-                          <td className="px-4 py-2">{p.secondPeriodStart?.slice(0, 10) || '-'} {p.secondPeriodEnd ? `— ${p.secondPeriodEnd.slice(0, 10)}` : ''}</td>
-                          <td className="px-4 py-2">{p.secondPayDate?.slice(0, 10) || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <TimekeepingSettingsTab periods={payrollPeriods.data ?? []} queryClient={queryClient} toast={toast} />
           )}
 
           {/* ─── Tax Table ────────────────────────────────── */}
@@ -478,6 +447,156 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function TimekeepingSettingsTab({ periods, queryClient, toast }: { periods: any[]; queryClient: any; toast: any }) {
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(currentYear);
+  const [biMonthly, setBiMonthly] = useState(true);
+  const [f1Start, setF1Start] = useState('');
+  const [f1End, setF1End] = useState('');
+  const [f1Pay, setF1Pay] = useState('');
+  const [f2Start, setF2Start] = useState('');
+  const [f2End, setF2End] = useState('');
+  const [f2Pay, setF2Pay] = useState('');
+
+  function prefill(m: number, y: number) {
+    setMonth(m); setYear(y);
+    const lastDay = new Date(y, m, 0).getDate();
+    setF1Start(`${y}-${String(m).padStart(2, '0')}-01`);
+    setF1End(`${y}-${String(m).padStart(2, '0')}-15`);
+    setF1Pay(`${y}-${String(m).padStart(2, '0')}-20`);
+    setF2Start(`${y}-${String(m).padStart(2, '0')}-16`);
+    setF2End(`${y}-${String(m).padStart(2, '0')}-${lastDay}`);
+    // Pay date: 5th of next month
+    const nextM = m === 12 ? 1 : m + 1;
+    const nextY = m === 12 ? y + 1 : y;
+    setF2Pay(`${nextY}-${String(nextM).padStart(2, '0')}-05`);
+  }
+
+  async function handleAdd() {
+    if (!f1Start || !f1End || !f1Pay) return;
+    setSaving(true);
+    try {
+      await api.post('/settings/payroll-periods', {
+        month, year, isBiMonthly: biMonthly,
+        firstPeriodStart: f1Start, firstPeriodEnd: f1End, firstPayDate: f1Pay,
+        ...(biMonthly ? { secondPeriodStart: f2Start, secondPeriodEnd: f2End, secondPayDate: f2Pay } : {}),
+      });
+      queryClient.invalidateQueries({ queryKey: ['payroll-periods'] });
+      toast({ title: 'Payroll period created' });
+      setAdding(false);
+    } catch (e: any) { toast({ title: 'Error', description: e?.response?.data?.message || 'Failed', variant: 'destructive' }); }
+    setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await api.delete(`/settings/payroll-periods/${id}`);
+      queryClient.invalidateQueries({ queryKey: ['payroll-periods'] });
+      toast({ title: 'Period deleted' });
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+  }
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-lg font-semibold">Timekeeping Settings</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Configure payroll cutoff periods, dates, and pay schedules.</p>
+        </div>
+        {!adding && (
+          <Button size="sm" onClick={() => { setAdding(true); prefill(currentMonth, currentYear); }} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Period
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="pt-4 space-y-4">
+        {adding && (
+          <div className="rounded-lg border p-4 bg-accent/20 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <SettingsField label="Month">
+                <select value={month} onChange={(e) => { const m = Number(e.target.value); prefill(m, year); }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {monthNames.map((n, i) => <option key={n} value={i + 1}>{n}</option>)}
+                </select>
+              </SettingsField>
+              <SettingsField label="Year">
+                <select value={year} onChange={(e) => { const y = Number(e.target.value); prefill(month, y); }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {[currentYear - 1, currentYear, currentYear + 1].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </SettingsField>
+              <div className="col-span-2 flex items-end">
+                <div className="flex items-center gap-2 pb-2">
+                  <Switch checked={biMonthly} onCheckedChange={setBiMonthly} />
+                  <Label className="text-sm">Bi-Monthly (2 cutoffs)</Label>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs font-medium text-muted-foreground">1st Cutoff Period</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <SettingsField label="Start Date"><Input type="date" value={f1Start} onChange={(e) => setF1Start(e.target.value)} /></SettingsField>
+              <SettingsField label="End Date"><Input type="date" value={f1End} onChange={(e) => setF1End(e.target.value)} /></SettingsField>
+              <SettingsField label="Pay Date"><Input type="date" value={f1Pay} onChange={(e) => setF1Pay(e.target.value)} /></SettingsField>
+            </div>
+
+            {biMonthly && (
+              <>
+                <p className="text-xs font-medium text-muted-foreground">2nd Cutoff Period</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <SettingsField label="Start Date"><Input type="date" value={f2Start} onChange={(e) => setF2Start(e.target.value)} /></SettingsField>
+                  <SettingsField label="End Date"><Input type="date" value={f2End} onChange={(e) => setF2End(e.target.value)} /></SettingsField>
+                  <SettingsField label="Pay Date"><Input type="date" value={f2Pay} onChange={(e) => setF2Pay(e.target.value)} /></SettingsField>
+                </div>
+              </>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleAdd} disabled={saving || !f1Start} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null} Create
+              </Button>
+              <button onClick={() => setAdding(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-muted/50 border-b">
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Period</th>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">1st Cutoff</th>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">1st Pay Date</th>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">2nd Cutoff</th>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">2nd Pay Date</th>
+              <th className="px-4 py-2 w-[50px]"></th>
+            </tr></thead>
+            <tbody>
+              {periods.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No payroll periods configured. Click &quot;Add Period&quot; to create one.</td></tr>
+              ) : periods.map((p: any) => (
+                <tr key={p.id} className="border-b hover:bg-accent/20">
+                  <td className="px-4 py-2 font-medium">{monthNames[(p.month || 1) - 1]} {p.year}</td>
+                  <td className="px-4 py-2 text-xs">{p.firstPeriodStart?.slice(0, 10)} → {p.firstPeriodEnd?.slice(0, 10)}</td>
+                  <td className="px-4 py-2 text-xs">{p.firstPayDate?.slice(0, 10)}</td>
+                  <td className="px-4 py-2 text-xs">{p.secondPeriodStart ? `${p.secondPeriodStart.slice(0, 10)} → ${p.secondPeriodEnd?.slice(0, 10)}` : '—'}</td>
+                  <td className="px-4 py-2 text-xs">{p.secondPayDate?.slice(0, 10) || '—'}</td>
+                  <td className="px-4 py-2">
+                    <button onClick={() => handleDelete(p.id)} className="p-1 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
