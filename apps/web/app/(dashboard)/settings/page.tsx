@@ -265,54 +265,45 @@ export default function SettingsPage() {
 
           {/* ─── Rate Calculation Settings ─────────────────── */}
           {activeTab === 'rate-calculation' && (
-            <SettingsCard title="Rate Calculation Multipliers" description="Philippine labor law pay multipliers for all hour types"
+            <SettingsCard title="Rate Calculation" description="Configure rate multipliers for payroll calculations. All values are percentages."
               onSave={() => {
                 const form = document.getElementById('rate-calc-form') as HTMLFormElement;
                 const fd = new FormData(form);
                 const payload: Record<string, any> = {};
-                for (const [key, val] of fd.entries()) payload[key] = Number(val);
+                for (const [key, val] of fd.entries()) payload[key] = Number(val) / 100;
                 saveRateCalc.mutate(payload);
               }}
               isSaving={saveRateCalc.isPending}
             >
               <form id="rate-calc-form" className="space-y-5">
-                {[
-                  { section: 'Regular', fields: [
-                    { name: 'nightDiffMultiplier', label: 'Night Differential', def: 0.10 },
+                <p className="text-sm font-medium text-muted-foreground">Rate Multipliers</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {[
+                    { name: 'nightDiffMultiplier', label: 'Night Diff', def: 0.10 },
                     { name: 'overtimeMultiplier', label: 'Overtime', def: 1.25 },
-                    { name: 'overtimeNightDiffMultiplier', label: 'OT + Night Diff', def: 0.10 },
-                  ]},
-                  { section: 'Rest Day / Special Holiday', fields: [
-                    { name: 'restdayOrSpecialHolidayMultiplier', label: 'Base', def: 1.30 },
-                    { name: 'restdayOrSpecialHolidayNightDiffMultiplier', label: '+ Night Diff', def: 0.10 },
-                    { name: 'restdayOrSpecialHolidayOvertimeMultiplier', label: '+ Overtime', def: 1.69 },
-                    { name: 'restdayOrSpecialHolidayOvertimeNDMultiplier', label: '+ OT + ND', def: 0.10 },
-                  ]},
-                  { section: 'Legal Holiday', fields: [
-                    { name: 'legalHolidayMultiplier', label: 'Base', def: 2.00 },
-                    { name: 'legalHolidayNightDiffMultiplier', label: '+ Night Diff', def: 0.10 },
-                    { name: 'legalHolidayOvertimeMultiplier', label: '+ Overtime', def: 2.50 },
-                    { name: 'legalHolidayOvertimeNDMultiplier', label: '+ OT + ND', def: 0.10 },
-                  ]},
-                  { section: 'Legal + Special Holiday (Double)', fields: [
-                    { name: 'legalOnSpecialHolidayMultiplier', label: 'Base', def: 2.60 },
-                    { name: 'legalOnSpecialHolidayNightDiffMultiplier', label: '+ Night Diff', def: 0.10 },
-                    { name: 'legalOnSpecialHolidayOvertimeMultiplier', label: '+ Overtime', def: 3.38 },
-                    { name: 'legalOnSpecialHolidayOvertimeNDMultiplier', label: '+ OT + ND', def: 0.10 },
-                  ]},
-                ].map((group, gi) => (
-                  <div key={group.section}>
-                    {gi > 0 && <div className="border-t pt-4" />}
-                    <p className="text-sm font-medium text-muted-foreground mb-3">{group.section}</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {group.fields.map(f => (
-                        <SettingsField key={f.name} label={f.label}>
-                          <Input name={f.name} type="number" step="0.01" defaultValue={Number(s.rateCalc?.[f.name] ?? f.def)} />
-                        </SettingsField>
-                      ))}
+                    { name: 'overtimeNightDiffMultiplier', label: 'Overtime Night Diff', def: 0.10 },
+                    { name: 'restdayOrSpecialHolidayMultiplier', label: 'Restday/Special Holiday', def: 1.30 },
+                    { name: 'restdayOrSpecialHolidayNightDiffMultiplier', label: 'Restday/Special Night Diff', def: 0.10 },
+                    { name: 'restdayOrSpecialHolidayOvertimeMultiplier', label: 'Restday/Special Overtime', def: 1.69 },
+                    { name: 'restdayOrSpecialHolidayOvertimeNDMultiplier', label: 'Restday/Special OT Night Diff', def: 0.10 },
+                    { name: 'legalHolidayMultiplier', label: 'Legal Holiday', def: 2.00 },
+                    { name: 'legalHolidayNightDiffMultiplier', label: 'Legal Night Diff', def: 0.10 },
+                    { name: 'legalHolidayOvertimeMultiplier', label: 'Legal Overtime', def: 2.50 },
+                    { name: 'legalHolidayOvertimeNDMultiplier', label: 'Legal OT Night Diff', def: 0.10 },
+                    { name: 'legalOnSpecialHolidayMultiplier', label: 'Legal on Special Holiday', def: 2.60 },
+                    { name: 'legalOnSpecialHolidayNightDiffMultiplier', label: 'Legal on Special Night Diff', def: 0.10 },
+                    { name: 'legalOnSpecialHolidayOvertimeMultiplier', label: 'Legal on Special Overtime', def: 3.38 },
+                    { name: 'legalOnSpecialHolidayOvertimeNDMultiplier', label: 'Legal on Special OT Night Diff', def: 0.10 },
+                  ].map(f => (
+                    <div key={f.name} className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide">{f.label}</Label>
+                      <div className="relative">
+                        <Input name={f.name} type="number" step="0.01" defaultValue={((Number(s.rateCalc?.[f.name]) || f.def) * 100).toFixed(2)} className="pr-8" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </form>
             </SettingsCard>
           )}
