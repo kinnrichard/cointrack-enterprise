@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import {
   ArrowLeft, Pencil, Users, MapPin, Briefcase, Calendar, Phone, Mail,
   User, Building2, Clock, CreditCard, Shield, Hash, Globe, Heart, Loader2, Trash2,
-  Upload, FileText, Download, Eye,
+  Upload, FileText, Download, Eye, Camera,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -199,10 +199,26 @@ export default function EmployeeDetailPage() {
         </div>
         <CardContent className="relative px-6 pb-4">
           <div className="flex flex-col sm:flex-row gap-5 -mt-14">
-            <div className="shrink-0">
+            <div className="shrink-0 relative group">
               <div className="w-28 h-28 rounded-2xl border-4 border-background bg-muted overflow-hidden shadow-lg flex items-center justify-center">
                 {emp.photo ? <img src={`${apiBase}${emp.photo}`} alt={fullName} className="w-full h-full object-cover" /> : <User className="h-10 w-10 text-muted-foreground/40" />}
               </div>
+              <label className="absolute inset-0 flex items-center justify-center rounded-2xl cursor-pointer bg-black/0 group-hover:bg-black/40 transition-colors border-4 border-transparent">
+                <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 5 * 1024 * 1024) { toast({ title: 'Max 5MB', variant: 'destructive' }); return; }
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  try {
+                    await api.post(`/employees/${emp.id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                    queryClient.invalidateQueries({ queryKey: ['employee', id] });
+                    toast({ title: 'Photo updated' });
+                  } catch { toast({ title: 'Upload failed', variant: 'destructive' }); }
+                  e.target.value = '';
+                }} />
+              </label>
             </div>
             <div className="pt-16 flex-1 min-w-0">
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
