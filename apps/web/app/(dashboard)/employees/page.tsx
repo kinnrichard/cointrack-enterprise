@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import {
-  Users, Pencil, Trash2, UserCheck, UserMinus, UserX, Loader2, Filter, X,
+  Users, Pencil, Trash2, UserCheck, UserMinus, UserX, Loader2, Filter, X, Upload, Camera,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
@@ -82,6 +82,7 @@ interface Employee {
   philhealthExempt: boolean;
   pagibigExempt: boolean;
   taxExempt: boolean;
+  photo: string | null;
   remarks: string | null;
   department: { id: string; name: string } | null;
   position: { id: string; name: string } | null;
@@ -227,6 +228,8 @@ export default function EmployeesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [formTab, setFormTab] = useState<'personal' | 'contact' | 'employment' | 'compensation'>('personal');
   const [selectedCompany, setSelectedCompany] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const activeFilterCount = [deptFilter, siteFilter, typeFilter !== 'all' ? typeFilter : ''].filter(Boolean).length;
 
@@ -277,13 +280,24 @@ export default function EmployeesPage() {
 
   // ─── Mutations ──────────────────────────────────────────────────────
 
+  async function uploadPhoto(employeeId: string) {
+    if (!photoFile) return;
+    const formData = new FormData();
+    formData.append('file', photoFile);
+    await api.post(`/employees/${employeeId}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
   const createMutation = useMutation({
-    mutationFn: (data: EmployeeFormData) => {
+    mutationFn: async (data: EmployeeFormData) => {
       const payload: Record<string, any> = { ...data };
       for (const key of Object.keys(payload)) {
         if (payload[key] === '') payload[key] = null;
       }
-      return api.post('/employees', payload);
+      const res = await api.post('/employees', payload);
+      if (photoFile && res.data?.id) await uploadPhoto(res.data.id);
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
@@ -294,11 +308,12 @@ export default function EmployeesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: EmployeeFormData }) => {
+    mutationFn: async ({ id, data }: { id: string; data: EmployeeFormData }) => {
       const payload: Record<string, any> = { ...data };
       for (const key of Object.keys(payload)) {
         if (payload[key] === '') payload[key] = null;
       }
+      if (photoFile) await uploadPhoto(id);
       return api.put(`/employees/${id}`, payload);
     },
     onSuccess: () => {
@@ -325,6 +340,8 @@ export default function EmployeesPage() {
     reset(DEFAULTS);
     setEditing(null);
     setFormTab('personal');
+    setPhotoPreview(null);
+    setPhotoFile(null);
     setModalOpen(true);
   }
 
@@ -382,6 +399,8 @@ export default function EmployeesPage() {
     });
     setEditing(emp);
     setFormTab('personal');
+    setPhotoPreview(emp.photo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${emp.photo}` : null);
+    setPhotoFile(null);
     setModalOpen(true);
   }
 
@@ -416,9 +435,13 @@ export default function EmployeesPage() {
       sortable: true,
       render: (_: any, row: Employee) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-600 text-white text-xs font-bold">
-            {getInitials(row.firstName, row.lastName)}
-          </div>
+          {row.photo ? (
+            <img src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${row.photo}`} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-700 to-red-600 text-white text-xs font-bold">
+              {getInitials(row.firstName, row.lastName)}
+            </div>
+          )}
           <div className="min-w-0">
             <p className="font-medium text-foreground truncate">
               {row.lastName}, {row.firstName} {row.middleName ? row.middleName[0] + '.' : ''} {row.suffix || ''}
@@ -645,6 +668,38 @@ export default function EmployeesPage() {
               {/* ─── Tab 1: Personal Information ──────────────────── */}
               {formTab === 'personal' && (
                 <>
+                  {/* Photo Upload */}
+                  <div className="flex items-start gap-5 mb-2">
+                    <div className="relative group">
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 border-dashed bg-muted/30 overflow-hidden">
+                        {photoPreview ? (
+                          <img src={photoPreview} alt="Photo" className="h-full w-full object-cover" />
+                        ) : (
+                          <Camera className="h-8 w-8 text-muted-foreground/40" />
+                        )}
+                      </div>
+                      <label className="absolute inset-0 flex items-center justify-center rounded-full cursor-pointer bg-black/0 group-hover:bg-black/40 transition-colors">
+                        <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return; }
+                          setPhotoFile(file);
+                          const reader = new FileReader();
+                          reader.onload = () => setPhotoPreview(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }} />
+                      </label>
+                    </div>
+                    <div className="pt-2">
+                      <p className="text-sm font-medium">Profile Photo</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Click to upload. PNG, JPG or WebP. Max 5MB.</p>
+                      {photoPreview && (
+                        <button type="button" onClick={() => { setPhotoPreview(null); setPhotoFile(null); }} className="text-xs text-red-500 hover:underline mt-1">Remove</button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-sm">First Name <span className="text-red-500">*</span></Label>
