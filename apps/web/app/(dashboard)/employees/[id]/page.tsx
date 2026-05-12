@@ -637,16 +637,7 @@ function DocumentsTab({ employeeId }: { employeeId: string }) {
 
   return (
     <div className="space-y-5">
-      {/* Category Filter */}
-      <div className="flex items-center gap-3">
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Category (optional)" /></SelectTrigger>
-          <SelectContent>{DOC_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-        </Select>
-        {category && <button onClick={() => setCategory('')} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>}
-      </div>
-
-      {/* Upload Drop Zone (procunexpro style) */}
+      {/* Upload Drop Zone */}
       <label
         className={cn(
           'flex items-center justify-center gap-3 px-6 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-all',
