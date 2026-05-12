@@ -18,7 +18,6 @@ const TABS = [
   { id: 'company', label: 'Tenant Info', icon: Building2 },
   { id: 'attendance', label: 'Attendance', icon: Clock },
   { id: 'leave', label: 'Leaves', icon: CalendarOff },
-  { id: 'leave-credits', label: 'Leave Credits', icon: CalendarPlus },
   { id: 'holiday', label: 'Holiday', icon: CalendarDays },
   { id: 'overtime', label: 'Overtime', icon: Timer },
   { id: 'payroll-periods', label: 'Timekeeping', icon: Clock },
@@ -221,68 +220,7 @@ export default function SettingsPage() {
 
           {/* ─── Leave Settings ───────────────────────────── */}
           {activeTab === 'leave' && (
-            <SettingsCard title="Leave Settings" description="Advance notice requirements for leave filing"
-              onSave={() => {
-                const form = document.getElementById('leave-form') as HTMLFormElement;
-                const fd = new FormData(form);
-                saveLeave.mutate({
-                  vacationLeaveAdvanceNoticeDays: Number(fd.get('vacationLeaveAdvanceNoticeDays')),
-                  sickLeaveAdvanceNoticeDays: Number(fd.get('sickLeaveAdvanceNoticeDays')),
-                });
-              }}
-              isSaving={saveLeave.isPending}
-            >
-              <form id="leave-form" className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SettingsField label="Vacation Leave Advance Notice (days)" hint="How many days before the leave date must an employee file">
-                    <Input name="vacationLeaveAdvanceNoticeDays" type="number" defaultValue={s.leave?.vacationLeaveAdvanceNoticeDays ?? 3} />
-                  </SettingsField>
-                  <SettingsField label="Sick Leave Advance Notice (days)" hint="Set to 0 for emergency/same-day filing">
-                    <Input name="sickLeaveAdvanceNoticeDays" type="number" defaultValue={s.leave?.sickLeaveAdvanceNoticeDays ?? 0} />
-                  </SettingsField>
-                </div>
-              </form>
-            </SettingsCard>
-          )}
-
-          {/* ─── Leave Credit Settings ────────────────────── */}
-          {activeTab === 'leave-credits' && (
-            <SettingsCard title="Leave Credit Settings" description="Annual allocations, accrual methods, and carry-over rules"
-              onSave={() => {
-                const form = document.getElementById('lc-form') as HTMLFormElement;
-                const fd = new FormData(form);
-                saveLeaveCredit.mutate({
-                  vacationLeavePerYear: Number(fd.get('vacationLeavePerYear')),
-                  sickLeavePerYear: Number(fd.get('sickLeavePerYear')),
-                  accrualMethod: fd.get('accrualMethod'),
-                  allowCarryOver: fd.get('allowCarryOver') === 'on',
-                  maxCarryOverDays: Number(fd.get('maxCarryOverDays')),
-                  allowCashConversion: fd.get('allowCashConversion') === 'on',
-                });
-              }}
-              isSaving={saveLeaveCredit.isPending}
-            >
-              <form id="lc-form" className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SettingsField label="Vacation Leave / Year"><Input name="vacationLeavePerYear" type="number" defaultValue={s.leaveCredit?.vacationLeavePerYear ?? 15} /></SettingsField>
-                  <SettingsField label="Sick Leave / Year"><Input name="sickLeavePerYear" type="number" defaultValue={s.leaveCredit?.sickLeavePerYear ?? 15} /></SettingsField>
-                </div>
-                <SettingsField label="Accrual Method">
-                  <select name="accrualMethod" defaultValue={s.leaveCredit?.accrualMethod || 'annual'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="annual">Annual (all at start of year)</option><option value="monthly">Monthly (pro-rated)</option>
-                  </select>
-                </SettingsField>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div><Label className="text-sm">Allow Carry Over</Label><p className="text-xs text-muted-foreground mt-0.5">Unused leave credits roll over to next year</p></div>
-                  <Switch name="allowCarryOver" defaultChecked={s.leaveCredit?.allowCarryOver ?? true} />
-                </div>
-                <SettingsField label="Max Carry Over Days" hint="0 = unlimited"><Input name="maxCarryOverDays" type="number" defaultValue={s.leaveCredit?.maxCarryOverDays ?? 0} /></SettingsField>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div><Label className="text-sm">Allow Cash Conversion</Label><p className="text-xs text-muted-foreground mt-0.5">Employees can convert unused leave to cash</p></div>
-                  <Switch name="allowCashConversion" defaultChecked={s.leaveCredit?.allowCashConversion ?? false} />
-                </div>
-              </form>
-            </SettingsCard>
+            <LeavesSettingsTab settings={s} saveLeave={saveLeave} saveLeaveCredit={saveLeaveCredit} />
           )}
 
           {/* ─── Overtime Settings ────────────────────────── */}
@@ -540,6 +478,116 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LeavesSettingsTab({ settings: s, saveLeave, saveLeaveCredit }: { settings: any; saveLeave: any; saveLeaveCredit: any }) {
+  const [allowCarryOver, setAllowCarryOver] = useState(s.leaveCredit?.allowCarryOver ?? true);
+  const [allowCashConversion, setAllowCashConversion] = useState(s.leaveCredit?.allowCashConversion ?? false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const form = document.getElementById('leaves-form') as HTMLFormElement;
+    const fd = new FormData(form);
+    try {
+      await Promise.all([
+        saveLeave.mutateAsync({
+          vacationLeaveAdvanceNoticeDays: Number(fd.get('vacationLeaveAdvanceNoticeDays')),
+          sickLeaveAdvanceNoticeDays: Number(fd.get('sickLeaveAdvanceNoticeDays')),
+        }),
+        saveLeaveCredit.mutateAsync({
+          vacationLeavePerYear: Number(fd.get('vacationLeavePerYear')),
+          sickLeavePerYear: Number(fd.get('sickLeavePerYear')),
+          accrualMethod: fd.get('accrualMethod'),
+          allowCarryOver,
+          maxCarryOverDays: Number(fd.get('maxCarryOverDays')),
+          allowCashConversion,
+        }),
+      ]);
+    } catch {}
+    setSaving(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-lg font-semibold">Leave Settings</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Leave types, advance notice, accrual and carry-over policies.</p>
+        </div>
+        <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90 rounded-lg" size="sm">
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save
+        </Button>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <form id="leaves-form" className="space-y-5">
+          {/* Section 1: Leave Types */}
+          <p className="text-sm font-medium text-muted-foreground">Leave Types</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingsField label="Vacation Leave Days" hint="Annual vacation leave allocation (default: 5)">
+              <Input name="vacationLeavePerYear" type="number" defaultValue={s.leaveCredit?.vacationLeavePerYear ?? 5} />
+            </SettingsField>
+            <SettingsField label="Sick Leave Days" hint="Annual sick leave allocation (default: 5)">
+              <Input name="sickLeavePerYear" type="number" defaultValue={s.leaveCredit?.sickLeavePerYear ?? 5} />
+            </SettingsField>
+          </div>
+
+          {/* Section 2: Leave Advance Notice */}
+          <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Leave Advance Notice</p></div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <SettingsField label="Vacation Leave" hint="Days before leave date to file (default: 7)">
+              <Input name="vacationLeaveAdvanceNoticeDays" type="number" defaultValue={s.leave?.vacationLeaveAdvanceNoticeDays ?? 7} />
+            </SettingsField>
+            <SettingsField label="Sick Leave" hint="Set to 0 for same-day filing (default: 0)">
+              <Input name="sickLeaveAdvanceNoticeDays" type="number" defaultValue={s.leave?.sickLeaveAdvanceNoticeDays ?? 0} />
+            </SettingsField>
+            <SettingsField label="Time Unit">
+              <select name="leaveNoticeUnit" defaultValue="days" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="days">Days</option>
+                <option value="hours">Hours</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+              </select>
+            </SettingsField>
+          </div>
+
+          {/* Section 3: Accrual & Policy */}
+          <div className="border-t pt-4"><p className="text-sm font-medium text-muted-foreground mb-3">Accrual & Policy Config</p></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SettingsField label="Accrual Method">
+              <select name="accrualMethod" defaultValue={s.leaveCredit?.accrualMethod || 'annual'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="annual">Annual (all at once)</option>
+                <option value="monthly">Monthly (pro-rated)</option>
+              </select>
+            </SettingsField>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <Label className="text-sm">Allow Carry Over</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Unused leave credits roll over to next year</p>
+            </div>
+            <Switch checked={allowCarryOver} onCheckedChange={setAllowCarryOver} />
+          </div>
+
+          {allowCarryOver && (
+            <SettingsField label="Max Carry Over Days" hint="0 = unlimited">
+              <Input name="maxCarryOverDays" type="number" defaultValue={s.leaveCredit?.maxCarryOverDays ?? 0} />
+            </SettingsField>
+          )}
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <Label className="text-sm">Allow Cash Conversion</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Employees can convert unused leave to cash</p>
+            </div>
+            <Switch checked={allowCashConversion} onCheckedChange={setAllowCashConversion} />
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
