@@ -138,6 +138,22 @@ export class SettingsController {
     return this.settingsService.deleteEmployeeLevel(req.user.tenantId, id);
   }
 
+  // Approval Chains
+  @Get('approval-chains')
+  getApprovalChains(@Req() req: any) {
+    return this.settingsService.getApprovalChains(req.user.tenantId);
+  }
+
+  @Post('approval-chains')
+  setApprovalChain(@Req() req: any, @Body() body: any) {
+    return this.settingsService.setApprovalChain(req.user.tenantId, body);
+  }
+
+  @Delete('approval-chains/:id')
+  deleteApprovalChain(@Req() req: any, @Param('id') id: string) {
+    return this.settingsService.deleteApprovalChain(req.user.tenantId, id);
+  }
+
   // Adjustment Types
   @Get('adjustment-types')
   getAdjustmentTypes(@Req() req: any) {

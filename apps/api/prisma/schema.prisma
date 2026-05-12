@@ -58,6 +58,7 @@ model Tenant {
   rateCalculationSettings        RateCalculationSetting[]
   taxTables                      TaxTable[]
   employeeLevels                 EmployeeLevel[]
+  approvalChains                 ApprovalChain[]
 }
 
 // ─── Companies (Client Companies) ──────────────────────────────────────────
@@ -240,8 +241,25 @@ model EmployeeLevel {
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   employees Employee[]
+  approvalChainsFor  ApprovalChain[] @relation("ApprovalChainFor")
+  approvalChainsBy   ApprovalChain[] @relation("ApprovalChainBy")
 
   @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model ApprovalChain {
+  id               String @id @default(uuid())
+  tenantId         String
+  employeeLevelId  String   // The level this rule applies TO (e.g., Rank and File)
+  approverLevelId  String   // The level that approves (e.g., Supervisor)
+  order            Int      // 1 = first approver, 2 = second approver, etc.
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  employeeLevel EmployeeLevel @relation("ApprovalChainFor", fields: [employeeLevelId], references: [id], onDelete: Cascade)
+  approverLevel EmployeeLevel @relation("ApprovalChainBy", fields: [approverLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, employeeLevelId, order])
   @@index([tenantId])
 }
 

@@ -134,6 +134,50 @@ async function main() {
     }
   }
 
+  // Approval Chains (default)
+  const allLevels = await prisma.employeeLevel.findMany({ where: { tenantId: tenant.id } });
+  const rnf = allLevels.find(l => l.name === 'Rank and File');
+  const tl = allLevels.find(l => l.name === 'Team Lead');
+  const sup = allLevels.find(l => l.name === 'Supervisor');
+  const mgr = allLevels.find(l => l.name === 'Manager');
+  const dir = allLevels.find(l => l.name === 'Director');
+
+  if (rnf && sup && mgr) {
+    // RnF: 1st Supervisor, 2nd Manager
+    const existing = await prisma.approvalChain.findFirst({ where: { tenantId: tenant.id, employeeLevelId: rnf.id } });
+    if (!existing) {
+      await prisma.approvalChain.createMany({ data: [
+        { tenantId: tenant.id, employeeLevelId: rnf.id, approverLevelId: sup.id, order: 1 },
+        { tenantId: tenant.id, employeeLevelId: rnf.id, approverLevelId: mgr.id, order: 2 },
+      ]});
+    }
+  }
+  if (tl && sup && mgr) {
+    const existing = await prisma.approvalChain.findFirst({ where: { tenantId: tenant.id, employeeLevelId: tl.id } });
+    if (!existing) {
+      await prisma.approvalChain.createMany({ data: [
+        { tenantId: tenant.id, employeeLevelId: tl.id, approverLevelId: sup.id, order: 1 },
+        { tenantId: tenant.id, employeeLevelId: tl.id, approverLevelId: mgr.id, order: 2 },
+      ]});
+    }
+  }
+  if (sup && mgr) {
+    const existing = await prisma.approvalChain.findFirst({ where: { tenantId: tenant.id, employeeLevelId: sup.id } });
+    if (!existing) {
+      await prisma.approvalChain.createMany({ data: [
+        { tenantId: tenant.id, employeeLevelId: sup.id, approverLevelId: mgr.id, order: 1 },
+      ]});
+    }
+  }
+  if (mgr && dir) {
+    const existing = await prisma.approvalChain.findFirst({ where: { tenantId: tenant.id, employeeLevelId: mgr.id } });
+    if (!existing) {
+      await prisma.approvalChain.createMany({ data: [
+        { tenantId: tenant.id, employeeLevelId: mgr.id, approverLevelId: dir.id, order: 1 },
+      ]});
+    }
+  }
+
   // Leave Types
   const leaveTypes = [
     { code: 'VL', name: 'Vacation Leave', isPaid: true, maxDays: 15 },

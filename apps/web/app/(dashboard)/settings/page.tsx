@@ -26,6 +26,7 @@ const TABS = [
   { id: 'payroll-periods', label: 'Payroll Periods', icon: DollarSign },
   { id: 'tax-table', label: 'Tax Table', icon: Receipt },
   { id: 'employee-levels', label: 'Employee Levels', icon: Users },
+  { id: 'approval-chains', label: 'Approval Chain', icon: Users },
   { id: 'adjustment-types', label: 'Adjustment Types', icon: Plus },
 ] as const;
 
@@ -76,6 +77,7 @@ export default function SettingsPage() {
   // CRUD queries for list-based settings
   const taxTables = useQuery({ queryKey: ['tax-tables'], queryFn: () => api.get('/settings/tax-tables').then(r => r.data) });
   const employeeLevels = useQuery({ queryKey: ['employee-levels'], queryFn: () => api.get('/settings/employee-levels').then(r => r.data) });
+  const approvalChains = useQuery({ queryKey: ['approval-chains'], queryFn: () => api.get('/settings/approval-chains').then(r => r.data) });
   const adjustmentTypes = useQuery({ queryKey: ['adjustment-types'], queryFn: () => api.get('/settings/adjustment-types').then(r => r.data) });
   const payrollPeriods = useQuery({ queryKey: ['payroll-periods'], queryFn: () => api.get('/settings/payroll-periods').then(r => r.data) });
 
@@ -557,6 +559,54 @@ export default function SettingsPage() {
                     </tbody>
                   </table>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ─── Approval Chain ──────────────────────────── */}
+          {activeTab === 'approval-chains' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold">Approval Chain</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Define who approves for each employee level. For example: Rank and File → 1st approver: Supervisor, 2nd approver: Manager.
+                  Used for leave applications, overtime requests, and other approval workflows.
+                </p>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                {(employeeLevels.data ?? []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Create Employee Levels first in the &quot;Employee Levels&quot; tab.</p>
+                ) : (
+                  (employeeLevels.data ?? []).map((level: any) => {
+                    const chains = (approvalChains.data ?? []).filter((c: any) => c.employeeLevelId === level.id).sort((a: any, b: any) => a.order - b.order);
+                    return (
+                      <div key={level.id} className="rounded-lg border overflow-hidden">
+                        <div className="px-4 py-3 bg-muted/50 border-b flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-muted-foreground w-6">{level.order}</span>
+                            <span className="text-sm font-semibold">{level.name}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{chains.length} approver{chains.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        {chains.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-muted-foreground">No approvers defined — use the API to configure.</div>
+                        ) : (
+                          <div className="divide-y">
+                            {chains.map((chain: any) => (
+                              <div key={chain.id} className="px-4 py-2.5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">{chain.order}</span>
+                                  <span className="text-sm">{chain.approverLevel.name}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">{chain.order === 1 ? '1st Approver' : chain.order === 2 ? '2nd Approver' : `${chain.order}th Approver`}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           )}

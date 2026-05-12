@@ -276,6 +276,52 @@ export class SettingsService {
     return { message: 'Employee level deleted' };
   }
 
+  // ─── Approval Chains ───────────────────────────────────────────
+
+  async getApprovalChains(tenantId: string) {
+    return this.prisma.approvalChain.findMany({
+      where: { tenantId },
+      orderBy: [{ employeeLevelId: 'asc' }, { order: 'asc' }],
+      include: {
+        employeeLevel: { select: { id: true, name: true, order: true } },
+        approverLevel: { select: { id: true, name: true, order: true } },
+      },
+    });
+  }
+
+  async setApprovalChain(tenantId: string, data: { employeeLevelId: string; approvers: { approverLevelId: string; order: number }[] }) {
+    // Delete existing chain for this level
+    await this.prisma.approvalChain.deleteMany({
+      where: { tenantId, employeeLevelId: data.employeeLevelId },
+    });
+
+    // Create new chain
+    const created = [];
+    for (const approver of data.approvers) {
+      const chain = await this.prisma.approvalChain.create({
+        data: {
+          tenantId,
+          employeeLevelId: data.employeeLevelId,
+          approverLevelId: approver.approverLevelId,
+          order: approver.order,
+        },
+        include: {
+          employeeLevel: { select: { id: true, name: true } },
+          approverLevel: { select: { id: true, name: true } },
+        },
+      });
+      created.push(chain);
+    }
+    return created;
+  }
+
+  async deleteApprovalChain(tenantId: string, id: string) {
+    const chain = await this.prisma.approvalChain.findFirst({ where: { id, tenantId } });
+    if (!chain) throw new NotFoundException('Approval chain not found');
+    await this.prisma.approvalChain.delete({ where: { id } });
+    return { message: 'Approval chain deleted' };
+  }
+
   // ─── Adjustment Types ─────────────────────────────────────────
 
   async getAdjustmentTypes(tenantId: string) {
