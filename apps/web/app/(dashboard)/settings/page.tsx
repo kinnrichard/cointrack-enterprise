@@ -353,40 +353,7 @@ export default function SettingsPage() {
 
           {/* ─── Tax Table ────────────────────────────────── */}
           {activeTab === 'tax-table' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">BIR Tax Table</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Income tax brackets for withholding tax calculation</p>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="rounded-lg border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead><tr className="bg-muted/50 border-b">
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Year</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-muted-foreground">Bracket</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">Min Income</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">Max Income</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">Base Tax</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold text-muted-foreground">Rate</th>
-                    </tr></thead>
-                    <tbody>
-                      {(taxTables.data ?? []).length === 0 ? (
-                        <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No tax brackets configured. Use the API to create brackets.</td></tr>
-                      ) : (taxTables.data ?? []).map((t: any) => (
-                        <tr key={t.id} className="border-b">
-                          <td className="px-4 py-2">{t.year}</td>
-                          <td className="px-4 py-2 font-medium">{t.name}</td>
-                          <td className="px-4 py-2 text-right">{Number(t.minIncome).toLocaleString()}</td>
-                          <td className="px-4 py-2 text-right">{t.maxIncome ? Number(t.maxIncome).toLocaleString() : '∞'}</td>
-                          <td className="px-4 py-2 text-right">{Number(t.baseTax).toLocaleString()}</td>
-                          <td className="px-4 py-2 text-right">{(Number(t.rate) * 100).toFixed(0)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <TaxTableTab brackets={taxTables.data ?? []} queryClient={queryClient} toast={toast} />
           )}
 
           {/* ─── Employee Levels ─────────────────────────── */}
@@ -438,6 +405,141 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function TaxTableTab({ brackets, queryClient, toast }: { brackets: any[]; queryClient: any; toast: any }) {
+  const currentYear = new Date().getFullYear();
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [filterYear, setFilterYear] = useState('');
+
+  // Form state
+  const [fYear, setFYear] = useState(currentYear);
+  const [fOrder, setFOrder] = useState(1);
+  const [fName, setFName] = useState('');
+  const [fMinIncome, setFMinIncome] = useState('');
+  const [fMaxIncome, setFMaxIncome] = useState('');
+  const [fBaseTax, setFBaseTax] = useState('');
+  const [fRate, setFRate] = useState('');
+
+  const years = [...new Set(brackets.map((b: any) => b.year))].sort((a: number, b: number) => b - a);
+  const filtered = filterYear ? brackets.filter((b: any) => b.year === Number(filterYear)) : brackets;
+
+  function resetForm() { setFYear(currentYear); setFOrder(brackets.length + 1); setFName(''); setFMinIncome(''); setFMaxIncome(''); setFBaseTax('0'); setFRate(''); }
+  function startEdit(b: any) { setEditingId(b.id); setFYear(b.year); setFOrder(b.bracketOrder); setFName(b.name); setFMinIncome(String(Number(b.minIncome))); setFMaxIncome(b.maxIncome ? String(Number(b.maxIncome)) : ''); setFBaseTax(String(Number(b.baseTax))); setFRate(String(Number(b.rate) * 100)); setAdding(false); }
+
+  function getPayload() {
+    return {
+      year: fYear, bracketOrder: fOrder, name: fName,
+      minIncome: Number(fMinIncome) || 0,
+      maxIncome: fMaxIncome ? Number(fMaxIncome) : null,
+      baseTax: Number(fBaseTax) || 0,
+      rate: (Number(fRate) || 0) / 100,
+    };
+  }
+
+  async function handleAdd() {
+    setSaving(true);
+    try { await api.post('/settings/tax-tables', getPayload()); queryClient.invalidateQueries({ queryKey: ['tax-tables'] }); toast({ title: 'Tax bracket created' }); setAdding(false); resetForm(); }
+    catch (e: any) { toast({ title: 'Error', description: e?.response?.data?.message || 'Failed', variant: 'destructive' }); }
+    setSaving(false);
+  }
+
+  async function handleUpdate() {
+    if (!editingId) return;
+    setSaving(true);
+    try { await api.put(`/settings/tax-tables/${editingId}`, getPayload()); queryClient.invalidateQueries({ queryKey: ['tax-tables'] }); toast({ title: 'Tax bracket updated' }); setEditingId(null); resetForm(); }
+    catch (e: any) { toast({ title: 'Error', variant: 'destructive' }); }
+    setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    try { await api.delete(`/settings/tax-tables/${id}`); queryClient.invalidateQueries({ queryKey: ['tax-tables'] }); toast({ title: 'Tax bracket deleted' }); }
+    catch { toast({ title: 'Error', variant: 'destructive' }); }
+  }
+
+  const formRow = (
+    <tr className="border-b bg-accent/20">
+      <td className="px-3 py-2"><Input type="number" value={fYear} onChange={(e) => setFYear(Number(e.target.value))} className="h-8 w-16" /></td>
+      <td className="px-3 py-2"><Input type="number" value={fOrder} onChange={(e) => setFOrder(Number(e.target.value))} className="h-8 w-14" /></td>
+      <td className="px-3 py-2"><Input value={fName} onChange={(e) => setFName(e.target.value)} className="h-8" placeholder="Bracket name" /></td>
+      <td className="px-3 py-2"><div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₱</span><Input value={fMinIncome} onChange={(e) => setFMinIncome(e.target.value)} className="h-8 pl-5 text-right" placeholder="0" /></div></td>
+      <td className="px-3 py-2"><div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₱</span><Input value={fMaxIncome} onChange={(e) => setFMaxIncome(e.target.value)} className="h-8 pl-5 text-right" placeholder="No limit" /></div></td>
+      <td className="px-3 py-2"><div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₱</span><Input value={fBaseTax} onChange={(e) => setFBaseTax(e.target.value)} className="h-8 pl-5 text-right" placeholder="0" /></div></td>
+      <td className="px-3 py-2"><div className="relative"><Input value={fRate} onChange={(e) => setFRate(e.target.value)} className="h-8 pr-6 text-right" placeholder="0" /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span></div></td>
+      <td className="px-3 py-2 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Button size="sm" onClick={editingId ? handleUpdate : handleAdd} disabled={saving || !fName} className="h-7 px-2 bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          </Button>
+          <button onClick={() => { setAdding(false); setEditingId(null); resetForm(); }} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+        </div>
+      </td>
+    </tr>
+  );
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-lg font-semibold">BIR Tax Table</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Income tax brackets for withholding tax calculation (TRAIN Law).</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm">
+            <option value="">All Years</option>
+            {years.map((y: number) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          {!adding && !editingId && (
+            <Button size="sm" onClick={() => { setAdding(true); resetForm(); }} className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:opacity-90">
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Bracket
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <div className="rounded-lg border overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-muted/50 border-b">
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground w-[70px]">Year</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground w-[60px]">Order</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Description</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground w-[120px]">Min Income</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground w-[120px]">Max Income</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground w-[110px]">Base Tax</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground w-[80px]">Rate</th>
+              <th className="px-3 py-2 w-[90px]"></th>
+            </tr></thead>
+            <tbody>
+              {adding && formRow}
+              {filtered.length === 0 && !adding ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No tax brackets. Click &quot;Add Bracket&quot; to create one.</td></tr>
+              ) : filtered.map((t: any) => (
+                editingId === t.id ? formRow : (
+                  <tr key={t.id} className="border-b hover:bg-accent/20">
+                    <td className="px-3 py-2 font-medium">{t.year}</td>
+                    <td className="px-3 py-2 text-center"><span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">{t.bracketOrder}</span></td>
+                    <td className="px-3 py-2 uppercase text-xs">{t.name}</td>
+                    <td className="px-3 py-2 text-right font-mono text-xs">₱{Number(t.minIncome).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right font-mono text-xs">{t.maxIncome ? `₱${Number(t.maxIncome).toLocaleString()}` : <span className="text-muted-foreground">No Limit</span>}</td>
+                    <td className="px-3 py-2 text-right font-mono text-xs">₱{Number(t.baseTax).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center"><span className="inline-flex px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-medium">{(Number(t.rate) * 100).toFixed(0)}%</span></td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => startEdit(t)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
